@@ -1,0 +1,49 @@
+---
+import Base from '../../layouts/Base.astro';
+import { getEntry, render } from 'astro:content';
+import { decideIndex } from '../../lib/policy';
+import { formatVNDate } from '../../lib/time';
+
+const { slug } = Astro.params;
+const entry = await getEntry('guides', slug ?? '');
+
+if (!entry) {
+  Astro.response.status = 404;
+}
+
+const decision = decideIndex({ kind: 'guide' });
+const Content = entry ? (await render(entry)).Content : null;
+const reviewed = entry ? entry.data.reviewed_at.toISOString().slice(0, 10) : '';
+---
+
+<Base
+  title={entry ? entry.data.title : 'Không tìm thấy bài'}
+  description={entry ? entry.data.description : 'Bài viết không tồn tại.'}
+  decision={decision}
+  canonicalPath={entry ? undefined : null}
+>
+  {
+    entry && Content ? (
+      <>
+        <article class="card">
+          <h1>{entry.data.title}</h1>
+          <p class="meta">
+            Nguồn tham khảo: <a href={entry.data.source_url} rel="nofollow noopener">{entry.data.source_url}</a>
+            {' · '}Rà soát ngày {formatVNDate(reviewed)}
+          </p>
+          <Content />
+        </article>
+        <p class="card">
+          <a href="/huong-dan/">← Tất cả bài hướng dẫn</a>
+        </p>
+      </>
+    ) : (
+      <>
+        <h1>Không tìm thấy bài viết</h1>
+        <p class="lede">
+          Bài này không tồn tại. <a href="/huong-dan/">Xem tất cả bài hướng dẫn</a>.
+        </p>
+      </>
+    )
+  }
+</Base>

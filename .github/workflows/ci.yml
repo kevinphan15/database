@@ -1,0 +1,26 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Cài từ lockfile
+        run: npm ci
+      - name: Kiểm thử
+        run: npm test
+      - name: Build
+        run: npm run build
+      - name: Kiểm tra migration D1 chạy được trên SQLite local
+        run: |
+          npm run db:local:init
+          npm run db:local:seed

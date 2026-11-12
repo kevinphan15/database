@@ -1,0 +1,119 @@
+---
+import Base from '../../../layouts/Base.astro';
+import StationBody from '../../../components/StationBody.astro';
+import DateBody from '../../../components/DateBody.astro';
+import { loadDataset } from '../../../lib/data';
+import { decideIndex } from '../../../lib/policy';
+import {
+  nearestDrawDate,
+  regionBySlug,
+  stationByPath,
+  stationsDrawingOn,
+} from '../../../lib/selectors';
+import { formatVNDate, isISODate, todayInVN } from '../../../lib/time';
+import type { Draw, Station } from '../../../lib/types';
+
+const { mien, slug } = Astro.params;
+const { dataset, source } = await loadDataset();
+const today = todayInVN();
+const region = regionBySlug(dataset, mien ?? '');
+const isDateSegment = isISODate(slug ?? '');
+
+// Một cấp sau /xo-so-<miền>/ là TÊN ĐÀI (slug chữ) hoặc NGÀY (YYYY-MM-DD).
+// Hai dạng này không thể tách thành hai file route vì cùng hình dạng URL.
+
+let station: Station | null = null;
+let dateStations: { station: Station; draw: Draw | null }[] = [];
+let prevDate: string | null = null;
+let nextDate: string | null = null;
+let notFound = false;
+
+if (!region) {
+  notFound = true;
+} else if (isDateSegment) {
+  const date = slug as string;
+  dateStations = stationsDrawingOn(dataset, date, region.code).map(({ station: s, draw }) => ({
+    station: s,
+    draw,
+  }));
+
+  // Đài có kỳ nhưng không nằm trong lịch tuần (ngoại lệ/đổi lịch) vẫn phải hiện.
+  for (const draw of dataset.draws.filter((d) => d.draw_date === date)) {
+    if (dateStations.some((item) => item.station.station_code === draw.station_code)) continue;
+    const match = dataset.stations.find(
+      (s) => s.station_code === draw.station_code && s.region_code === region.code,
+    );
+    if (match) dateStations.push({ station: match, draw });
+  }
+
+  if (dateStations.length === 0) {
+    // Ngày không có lịch quay → 404 (không tạo trang rỗng).
+    notFound = true;
+  } else {
+    prevDate = nearestDrawDate(dataset, date, -1, { regionCode: region.code });
+    nextDate = nearestDrawDate(dataset, date, 1, { regionCode: region.code });
+  }
+} else {
+  const found = stationByPath(dataset, mien ?? '', slug ?? '');
+  if (!found) {
+    notFound = true;
+  } else {
+    station = found.station;
+  }
+}
+
+if (notFound) Astro.response.status = 404;
+
+const hasPrizes = dateStations.some(({ draw }) => draw && Object.keys(draw.prizes).length > 0);
+const decision = decideIndex({
+  kind: isDateSegment ? 'date' : 'station',
+  hasPrizes,
+});
+
+const title = notFound
+  ? 'Không tìm thấy trang'
+  : isDateSegment && region
+    ? `Kết quả xổ số ${region.name} ngày ${formatVNDate(slug ?? '')}`
+    : station
+      ? `Kết quả xổ số ${station.name}`
+      : 'Kết quả xổ số';
+
+const description = notFound
+  ? 'Đường dẫn không hợp lệ.'
+  : isDateSegment && region
+    ? `Kết quả xổ số ${region.name} ngày ${formatVNDate(slug ?? '')}: các đài có lịch quay, trạng thái từng kỳ và bảng giải.`
+    : station
+      ? `Kết quả xổ số ${station.name}: kỳ gần nhất, lịch quay và các kỳ trước.`
+      : 'Kết quả xổ số';
+---
+
+<Base
+  title={title}
+  description={description}
+  decision={decision}
+  canonicalPath={notFound ? null : undefined}
+  dataSource={source}
+  notice={dataset.notice}
+>
+  {
+    notFound || !region ? (
+      <>
+        <h1>Không tìm thấy trang</h1>
+        <p class="lede">
+          Đường dẫn không tồn tại hoặc ngày này không có lịch quay. <a href="/">Về trang chủ</a>.
+        </p>
+      </>
+    ) : isDateSegment ? (
+      <DateBody
+        dataset={dataset}
+        region={region}
+        date={slug as string}
+        stations={dateStations}
+        prevDate={prevDate}
+        nextDate={nextDate}
+      />
+    ) : station ? (
+      <StationBody dataset={dataset} region={region} station={station} today={today} />
+    ) : null
+  }
+</Base>

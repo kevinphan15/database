@@ -1,0 +1,105 @@
+---
+import type { Dataset, Region, Station } from '../lib/types';
+import PrizeTable from './PrizeTable.astro';
+import StatusBadge from './StatusBadge.astro';
+import { drawsOfStation, rulesFor, scheduleOfStation } from '../lib/selectors';
+import { formatVNDate, formatVNDateLong, formatVNTimeFromISO, weekdayName } from '../lib/time';
+
+interface Props {
+  dataset: Dataset;
+  region: Region;
+  station: Station;
+  today: string;
+}
+
+const { dataset, region, station, today } = Astro.props;
+const draws = drawsOfStation(dataset, station.station_code);
+const latest = draws[0] ?? null;
+const previous = draws.slice(1, 8);
+const schedule = scheduleOfStation(dataset, station.station_code);
+const isToday = latest?.draw_date === today;
+---
+
+<h1>Kết quả xổ số {station.name}</h1>
+<p class="lede">
+  <a href={`/xo-so-${region.slug}/`}>{region.name}</a> · Ngày đang tra cứu: {formatVNDate(today)}
+</p>
+
+{latest ? (
+  <section class="card">
+    <h2>{isToday ? 'Kỳ hôm nay' : 'Kỳ gần nhất'}: {formatVNDateLong(latest.draw_date)}</h2>
+    <p class="meta">
+      <StatusBadge status={latest.status} />
+      {latest.period_code && <> · kỳ {latest.period_code}</>}
+      {latest.updated_at && <> · cập nhật {formatVNTimeFromISO(latest.updated_at)}</>}
+      {latest.is_correction && <> · <strong>đã đính chính</strong></>}
+    </p>
+    <PrizeTable
+      prizes={latest.prizes}
+      rules={rulesFor(dataset, latest.prize_rule_version)}
+      caption={`${station.name} — ${formatVNDate(latest.draw_date)}`}
+    />
+    <p class="meta">
+      <a href={`/xo-so-${region.slug}/${station.slug}/${latest.draw_date}/`}>Mở trang ngày {formatVNDate(latest.draw_date)}</a>
+      {' · '}
+      <a href={`/so-ket-qua/?dai=${station.slug}`}>Xem sổ kết quả</a>
+      {' · '}
+      <a href={`/do-ve-so/?dai=${station.slug}`}>Dò vé</a>
+    </p>
+  </section>
+) : (
+  <p class="card meta">Đài này chưa có kỳ nào trong dữ liệu.</p>
+)}
+
+<section class="card">
+  <h2>Lịch quay</h2>
+  {schedule.length > 0 ? (
+    <ul class="link-list">
+      {schedule.map((rule) => (
+        <li>
+          {weekdayName(rule.iso_weekday)} — {rule.local_time}
+        </li>
+      ))}
+    </ul>
+  ) : (
+    <p class="meta">Chưa có lịch cho đài này.</p>
+  )}
+</section>
+
+<section class="card">
+  <h2>Các kỳ gần đây</h2>
+  {previous.length > 0 ? (
+    <table>
+      <caption>{previous.length} kỳ trước của {station.name}</caption>
+      <thead>
+        <tr>
+          <th scope="col">Ngày quay</th>
+          <th scope="col">Trạng thái</th>
+          <th scope="col">Trang</th>
+        </tr>
+      </thead>
+      <tbody>
+        {previous.map((draw) => (
+          <tr>
+            <th scope="row">{formatVNDate(draw.draw_date)}</th>
+            <td>
+              <StatusBadge status={draw.status} />
+            </td>
+            <td>
+              <a href={`/xo-so-${region.slug}/${station.slug}/${draw.draw_date}/`}>Xem</a>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  ) : (
+    <p class="meta">Chưa có kỳ trước.</p>
+  )}
+</section>
+
+<section class="card">
+  <h2>Thống kê</h2>
+  <p class="meta">
+    <a href={`/thong-ke/giai-dac-biet/?dai=${station.slug}`}>Thống kê giải đặc biệt của {station.name}</a>
+  </p>
+</section>

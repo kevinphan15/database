@@ -1,0 +1,11 @@
+---
+import type { DrawStatus } from '../lib/types';
+import { statusLabel } from '../lib/format';
+
+interface Props {
+  status: DrawStatus;
+}
+const { status } = Astro.props;
+---
+
+<span class={`status status--${status}`}>{statusLabel(status)}</span>

@@ -1,0 +1,80 @@
+---
+import Base from '../layouts/Base.astro';
+import StatusBadge from '../components/StatusBadge.astro';
+import { loadDataset } from '../lib/data';
+import { latestPerStation, stationsDrawingOn } from '../lib/selectors';
+import { addDays, formatVNDate, formatVNDateLong, todayInVN } from '../lib/time';
+import { decideIndex } from '../lib/policy';
+
+const { dataset, source } = await loadDataset();
+const today = todayInVN();
+const yesterday = addDays(today, -1);
+
+const regions = dataset.regions.map((region) => ({
+  region,
+  stations: latestPerStation(dataset, region.code),
+}));
+
+const decision = decideIndex({ kind: 'home' });
+---
+
+<Base
+  title="Kết quả xổ số các miền — tra theo miền, đài và ngày"
+  description={`Kết quả xổ số theo miền, đài và ngày. Đang tra cứu ngày ${formatVNDate(today)}.`}
+  decision={decision}
+  dataSource={source}
+  notice={dataset.notice}
+>
+  <h1>Kết quả xổ số hôm nay</h1>
+  <p class="lede">
+    Ngày đang tra cứu: <strong>{formatVNDateLong(today)}</strong>. Kỳ gần nhất của mỗi đài được ghi
+    kèm ngày thực tế, vì các miền có thể đang ở trạng thái khác nhau.
+  </p>
+
+  <div class="grid">
+    {
+      regions.map(({ region, stations }) => (
+        <section class="card">
+          <h2>
+            <a href={`/xo-so-${region.slug}/`}>{region.name}</a>
+          </h2>
+          <ul class="link-list">
+            {stations.map(({ station, draw }) => (
+              <li>
+                <a href={`/xo-so-${region.slug}/${station.slug}/`}>{station.name}</a>
+                {draw ? (
+                  <>
+                    {' — '}
+                    <span class="meta">{formatVNDate(draw.draw_date)}</span>{' '}
+                    <StatusBadge status={draw.status} />
+                  </>
+                ) : (
+                  <span class="meta"> — chưa có kỳ nào</span>
+                )}
+              </li>
+            ))}
+          </ul>
+          <p class="meta">
+            {stationsDrawingOn(dataset, today, region.code).length} đài quay hôm nay.
+          </p>
+          <p>
+            <a href={`/lich-mo-thuong/`}>Xem lịch mở thưởng →</a>
+          </p>
+        </section>
+      ))
+    }
+  </div>
+
+  <section class="card">
+    <h2>Tra theo ngày</h2>
+    <p class="meta">
+      Hôm qua là {formatVNDateLong(yesterday)}. Trang kết quả theo ngày chỉ mở khi ngày đó có lịch
+      quay; ngày không quay trả về 404.
+    </p>
+    <ul class="link-list">
+      <li><a href="/so-ket-qua/">Sổ kết quả theo đài</a></li>
+      <li><a href="/do-ve-so/">Dò vé số</a></li>
+      <li><a href="/huong-dan/">Hướng dẫn tra cứu</a></li>
+    </ul>
+  </section>
+</Base>

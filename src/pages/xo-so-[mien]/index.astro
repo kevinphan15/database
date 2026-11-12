@@ -1,0 +1,82 @@
+---
+import Base from '../../layouts/Base.astro';
+import PrizeTable from '../../components/PrizeTable.astro';
+import ScheduleTable from '../../components/ScheduleTable.astro';
+import StatusBadge from '../../components/StatusBadge.astro';
+import { loadDataset } from '../../lib/data';
+import { latestPerStation, regionBySlug, rulesFor, stationsDrawingOn } from '../../lib/selectors';
+import { formatVNDate, formatVNTimeFromISO, todayInVN } from '../../lib/time';
+import { decideIndex } from '../../lib/policy';
+
+const { mien } = Astro.params;
+const { dataset, source } = await loadDataset();
+const today = todayInVN();
+const region = regionBySlug(dataset, mien ?? '');
+
+if (!region) {
+  Astro.response.status = 404;
+}
+
+const stations = region ? latestPerStation(dataset, region.code) : [];
+const drawingToday = region ? stationsDrawingOn(dataset, today, region.code) : [];
+const decision = decideIndex({ kind: 'region' });
+---
+
+<Base
+  title={region ? `Kết quả xổ số ${region.name}` : 'Không tìm thấy miền'}
+  description={
+    region
+      ? `Kết quả xổ số ${region.name} theo từng đài, kèm lịch quay và trạng thái kỳ gần nhất.`
+      : 'Đường dẫn không hợp lệ.'
+  }
+  decision={decision}
+  canonicalPath={region ? undefined : null}
+  dataSource={source}
+  notice={dataset.notice}
+>
+  {
+    region ? (
+      <>
+        <h1>Kết quả xổ số {region.name}</h1>
+        <p class="lede">
+          Ngày đang tra cứu: <strong>{formatVNDate(today)}</strong>. Tên đài liên kết tới trang đài;
+          ngày kèm theo là ngày quay thực tế của kỳ gần nhất.
+        </p>
+
+        <section class="card">
+          <h2>Lịch quay hôm nay</h2>
+          <ScheduleTable stations={drawingToday} date={today} />
+        </section>
+
+        {stations.map(({ station, draw }) => (
+          <section class="card">
+            <h2>
+              <a href={`/xo-so-${region.slug}/${station.slug}/`}>{station.name}</a>
+            </h2>
+            {draw ? (
+              <>
+                <p class="meta">
+                  Kỳ ngày <strong>{formatVNDate(draw.draw_date)}</strong>{' '}
+                  <StatusBadge status={draw.status} />{' '}
+                  {draw.updated_at && <>· cập nhật {formatVNTimeFromISO(draw.updated_at)}</>}
+                </p>
+                <PrizeTable
+                  prizes={draw.prizes}
+                  rules={rulesFor(dataset, draw.prize_rule_version)}
+                  caption={`${station.name} — ${formatVNDate(draw.draw_date)}`}
+                />
+              </>
+            ) : (
+              <p class="meta">Chưa có kỳ nào cho đài này.</p>
+            )}
+          </section>
+        ))}
+      </>
+    ) : (
+      <>
+        <h1>Không tìm thấy miền</h1>
+        <p class="lede">Đường dẫn không tồn tại. <a href="/">Về trang chủ</a>.</p>
+      </>
+    )
+  }
+</Base>

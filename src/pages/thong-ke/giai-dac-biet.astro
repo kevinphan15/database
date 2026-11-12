@@ -1,0 +1,105 @@
+---
+import Base from '../../layouts/Base.astro';
+import { loadDataset } from '../../lib/data';
+import { decideIndex } from '../../lib/policy';
+import { coverageLabel, specialStats } from '../../lib/stats';
+import { formatVNDate, todayInVN } from '../../lib/time';
+
+const { dataset, source } = await loadDataset();
+const today = todayInVN();
+const selectedSlug = Astro.url.searchParams.get('dai') ?? '';
+const stations = dataset.stations.filter((s) => s.status === 'active');
+const station = stations.find((s) => s.slug === selectedSlug) ?? stations[0] ?? null;
+const stat = station ? specialStats(dataset, station, 30) : null;
+const decision = decideIndex({ kind: 'stats' });
+---
+
+<Base
+  title={station ? `Thống kê giải đặc biệt ${station.name}` : 'Thống kê giải đặc biệt'}
+  description="Thống kê giải đặc biệt theo đài, chỉ tính trên các kỳ đã xác nhận, kèm phạm vi và số kỳ thực có."
+  decision={decision}
+  canonicalPath="/thong-ke/giai-dac-biet/"
+  dataSource={source}
+  notice={dataset.notice}
+>
+  <h1>Thống kê giải đặc biệt</h1>
+  <p class="lede">
+    Chỉ tính trên các kỳ <strong>đã xác nhận</strong>. Số kỳ thực có được ghi rõ để bạn biết mức độ đầy
+    đủ của dữ liệu.
+  </p>
+
+  <section class="card">
+    <h2>Chọn đài</h2>
+    <ul class="link-list">
+      {stations.map((item) => (
+        <li>
+          <a href={`/thong-ke/giai-dac-biet/?dai=${item.slug}`}>{item.name}</a>
+          {item.slug === station?.slug && <strong> ← đang xem</strong>}
+        </li>
+      ))}
+    </ul>
+  </section>
+
+  {
+    station && stat ? (
+      <>
+        <section class="card">
+          <h2>{station.name}</h2>
+          <p class="meta">
+            Cách tính: lấy số giải đặc biệt của {stat.windowLabel}, chỉ gồm kỳ đã xác nhận.
+            Phạm vi: một đài ({station.name}). Dữ liệu: <strong>{coverageLabel(stat)}</strong>.
+          </p>
+
+          {stat.items.length === 0 ? (
+            <p class="meta">Chưa có kỳ nào đã xác nhận để tính thống kê.</p>
+          ) : (
+            <>
+              <table>
+                <caption>Chữ số cuối của giải đặc biệt</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Chữ số cuối</th>
+                    <th scope="col">Số lần</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stat.lastDigitFrequency.map((row) => (
+                    <tr>
+                      <th scope="row">{row.digit}</th>
+                      <td>{row.count}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              <h3>Danh sách kỳ dùng để tính</h3>
+              <table>
+                <caption>{stat.periodsWithData} kỳ</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Ngày quay</th>
+                    <th scope="col">Giải đặc biệt</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stat.items.map((item) => (
+                    <tr>
+                      <th scope="row">{formatVNDate(item.date)}</th>
+                      <td class="num">{item.number}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
+          )}
+
+          <p class="meta">
+            Số liệu thống kê không dự đoán kết quả. Ngày tính: {formatVNDate(today)}.
+          </p>
+        </section>
+      </>
+    ) : (
+      <p class="card meta">Chưa có đài nào trong dữ liệu.</p>
+    )
+  }
+</Base>

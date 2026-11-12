@@ -1,0 +1,100 @@
+---
+import Base from '../../layouts/Base.astro';
+import StatusBadge from '../../components/StatusBadge.astro';
+import { loadDataset } from '../../lib/data';
+import { decideIndex } from '../../lib/policy';
+import { drawsOfStation } from '../../lib/selectors';
+import { formatVNDate, formatVNDateLong, todayInVN } from '../../lib/time';
+
+const { dataset, source } = await loadDataset();
+const today = todayInVN();
+const selectedSlug = Astro.url.searchParams.get('dai') ?? '';
+const stations = dataset.stations.filter((s) => s.status === 'active');
+const station = stations.find((s) => s.slug === selectedSlug) ?? stations[0] ?? null;
+const region = station ? dataset.regions.find((r) => r.code === station.region_code) ?? null : null;
+const draws = station ? drawsOfStation(dataset, station.station_code) : [];
+
+const decision = decideIndex({ kind: 'ledger' });
+---
+
+<Base
+  title={station ? `Sổ kết quả ${station.name}` : 'Sổ kết quả'}
+  description={
+    station
+      ? `Sổ kết quả ${station.name} theo từng kỳ: ngày quay, trạng thái và liên kết tới bảng giải.`
+      : 'Sổ kết quả theo đài.'
+  }
+  decision={decision}
+  canonicalPath="/so-ket-qua/"
+  dataSource={source}
+  notice={dataset.notice}
+>
+  <h1>Sổ kết quả</h1>
+  <p class="lede">
+    Chọn đài để xem chuỗi kỳ. Ngày đang tra cứu: {formatVNDate(today)}.
+  </p>
+
+  <section class="card">
+    <h2>Chọn đài</h2>
+    <ul class="link-list">
+      {stations.map((item) => (
+        <li>
+          <a href={`/so-ket-qua/?dai=${item.slug}`} aria-current={item.slug === station?.slug ? 'page' : undefined}>
+            {item.name}
+          </a>
+          {item.slug === station?.slug && <strong> ← đang xem</strong>}
+        </li>
+      ))}
+    </ul>
+  </section>
+
+  {
+    station && region ? (
+      <section class="card">
+        <h2>
+          {station.name} — {draws.length} kỳ
+        </h2>
+        <p class="meta">
+          <a href={`/xo-so-${region.slug}/${station.slug}/`}>Trang đài {station.name}</a>
+          {' · '}
+          <a href={`/do-ve-so/?dai=${station.slug}`}>Dò vé</a>
+        </p>
+        {draws.length > 0 ? (
+          <table>
+            <caption>Các kỳ đã ghi nhận của {station.name}</caption>
+            <thead>
+              <tr>
+                <th scope="col">Ngày quay</th>
+                <th scope="col">Trạng thái</th>
+                <th scope="col">Kỳ</th>
+                <th scope="col">Trang</th>
+              </tr>
+            </thead>
+            <tbody>
+              {draws.map((draw) => (
+                <tr>
+                  <th scope="row">{formatVNDateLong(draw.draw_date)}</th>
+                  <td>
+                    <StatusBadge status={draw.status} />
+                  </td>
+                  <td>{draw.period_code ?? '—'}</td>
+                  <td>
+                    <a href={`/xo-so-${region.slug}/${station.slug}/${draw.draw_date}/`}>Xem</a>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <p class="meta">Đài này chưa có kỳ nào.</p>
+        )}
+        <p class="meta">
+          Sổ kết quả liệt kê mọi kỳ đã ghi nhận, kể cả kỳ chưa đối soát. Chỉ kỳ ghi "Đã xác nhận" mới
+          dùng được cho công cụ dò vé.
+        </p>
+      </section>
+    ) : (
+      <p class="card meta">Chưa có đài nào trong dữ liệu.</p>
+    )
+  }
+</Base>

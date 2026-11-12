@@ -1,0 +1,47 @@
+---
+import type { PrizeRule } from '../lib/types';
+import { buildPrizeRows, completeness } from '../lib/format';
+
+interface Props {
+  prizes: Record<string, string[]>;
+  rules: PrizeRule[];
+  caption?: string;
+  /** Ẩn các giải chưa có số (mặc định vẫn hiển thị kèm ghi chú). */
+  hideMissing?: boolean;
+}
+
+const { prizes, rules, caption, hideMissing = false } = Astro.props;
+const rows = buildPrizeRows(prizes, rules).filter(
+  (row) => !hideMissing || row.numbers.length > 0,
+);
+const filled = completeness(prizes, rules);
+---
+
+<table>
+  {caption && <caption>{caption} — đủ {filled} giải</caption>}
+  <thead>
+    <tr>
+      <th scope="col">Giải</th>
+      <th scope="col">Số trúng</th>
+    </tr>
+  </thead>
+  <tbody>
+    {
+      rows.map((row) => (
+        <tr>
+          <th scope="row">{row.label}</th>
+          <td>
+            {row.numbers.length > 0 ? (
+              row.numbers.map((number) => <span class="num">{number}</span>)
+            ) : (
+              <span class="num--missing">Chưa có số</span>
+            )}
+            {!row.complete && row.numbers.length > 0 && (
+              <span class="num--missing"> · thiếu {row.expected - row.numbers.length} số</span>
+            )}
+          </td>
+        </tr>
+      ))
+    }
+  </tbody>
+</table>

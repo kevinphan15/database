@@ -1,0 +1,68 @@
+---
+import '../styles/global.css';
+import { robotsContent, type IndexDecision } from '../lib/policy';
+
+interface Props {
+  title: string;
+  description: string;
+  decision: IndexDecision;
+  /**
+   * Đường dẫn canonical. Bỏ trống = self-canonical; truyền `null` = không phát thẻ canonical
+   * (dùng cho trang 404, vì canonical trỏ về chính URL sai là tín hiệu nhiễu).
+   */
+  canonicalPath?: string | null;
+  dataSource?: 'd1' | 'fixture';
+  notice?: string | null;
+}
+
+const { title, description, decision, canonicalPath, dataSource, notice } = Astro.props;
+const canonical =
+  canonicalPath === null
+    ? null
+    : new URL(canonicalPath ?? Astro.url.pathname, Astro.url.origin).toString();
+const currentPath = Astro.url.pathname;
+const isCurrent = (path: string) => currentPath === path || currentPath.startsWith(path);
+---
+
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    {canonical && <link rel="canonical" href={canonical} />}
+    <meta name="robots" content={robotsContent(decision)} />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="inner">
+        <a class="brand" href="/">Kết quả <span>xổ số</span></a>
+        <nav class="site-nav" aria-label="Điều hướng chính">
+          <a href="/" aria-current={isCurrent('/') && currentPath === '/' ? 'page' : undefined}>Trang chủ</a>
+          <a href="/xo-so-mien-nam/" aria-current={isCurrent('/xo-so-mien-nam/') ? 'page' : undefined}>Miền Nam</a>
+          <a href="/lich-mo-thuong/" aria-current={isCurrent('/lich-mo-thuong/') ? 'page' : undefined}>Lịch mở thưởng</a>
+          <a href="/so-ket-qua/" aria-current={isCurrent('/so-ket-qua/') ? 'page' : undefined}>Sổ kết quả</a>
+          <a href="/do-ve-so/" aria-current={isCurrent('/do-ve-so/') ? 'page' : undefined}>Dò vé</a>
+          <a href="/huong-dan/" aria-current={isCurrent('/huong-dan/') ? 'page' : undefined}>Hướng dẫn</a>
+        </nav>
+      </div>
+    </header>
+
+    {dataSource === 'fixture' && notice && <p class="fixture-banner" role="status">{notice}</p>}
+
+    <main id="main">
+      <slot />
+    </main>
+
+    <footer class="site-footer">
+      <div class="inner">
+        <p>
+          Nội dung chỉ mang tính tra cứu. Kết quả chính thức do đơn vị phát hành công bố.
+          Trang chưa hỗ trợ dò vé ở phiên bản này.
+        </p>
+        {decision.index === false && <p>Trang này không được đưa vào chỉ mục tìm kiếm.</p>}
+      </div>
+    </footer>
+  </body>
+</html>

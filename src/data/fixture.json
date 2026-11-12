@@ -1,0 +1,78 @@
+{
+  "notice": "DỮ LIỆU MẪU — số dưới đây là giả, không phải kết quả thật. Dùng để kiểm thử giao diện và các trạng thái kỳ.",
+  "is_fixture": true,
+  "product_code": "xs-mn",
+  "prize_rule_version": 1,
+  "regions": [{ "code": "MN", "name": "Miền Nam", "slug": "mien-nam" }],
+  "stations": [
+    {
+      "station_code": "DONG_NAI",
+      "region_code": "MN",
+      "slug": "dong-nai",
+      "name": "Đồng Nai",
+      "short_name": "ĐN",
+      "status": "active",
+      "redistribution_allowed": 0
+    }
+  ],
+  "prize_rules": [
+    { "version": 1, "prize_code": "special", "label": "Giải Đặc Biệt", "ordinal": 1, "count": 1, "digits": 6 },
+    { "version": 1, "prize_code": "first", "label": "Giải Nhất", "ordinal": 2, "count": 1, "digits": 5 },
+    { "version": 1, "prize_code": "second", "label": "Giải Nhì", "ordinal": 3, "count": 1, "digits": 5 },
+    { "version": 1, "prize_code": "third", "label": "Giải Ba", "ordinal": 4, "count": 2, "digits": 5 },
+    { "version": 1, "prize_code": "fourth", "label": "Giải Tư", "ordinal": 5, "count": 7, "digits": 5 },
+    { "version": 1, "prize_code": "fifth", "label": "Giải Năm", "ordinal": 6, "count": 1, "digits": 4 },
+    { "version": 1, "prize_code": "sixth", "label": "Giải Sáu", "ordinal": 7, "count": 3, "digits": 4 },
+    { "version": 1, "prize_code": "seventh", "label": "Giải Bảy", "ordinal": 8, "count": 1, "digits": 3 },
+    { "version": 1, "prize_code": "eighth", "label": "Giải Tám", "ordinal": 9, "count": 1, "digits": 2 }
+  ],
+  "schedule": [
+    { "station_code": "DONG_NAI", "product_code": "xs-mn", "iso_weekday": 3, "local_time": "16:10", "from_date": "2026-01-01", "to_date": null }
+  ],
+  "exceptions": [],
+  "draws": [
+    {
+      "draw_key": "DONG_NAI:xs-mn:2026-11-04",
+      "station_code": "DONG_NAI",
+      "product_code": "xs-mn",
+      "draw_date": "2026-11-04",
+      "period_code": "11/2026",
+      "status": "confirmed",
+      "prize_rule_version": 1,
+      "updated_at": "2026-11-04T09:40:00Z",
+      "is_correction": false,
+      "prizes": {
+        "special": ["001234"],
+        "first": ["12345"],
+        "second": ["67890"],
+        "third": ["11111", "22222"],
+        "fourth": ["33333", "44444", "55555", "66666", "77777", "88888", "99999"],
+        "fifth": ["0123"],
+        "sixth": ["0123", "0456", "0789"],
+        "seventh": ["007"],
+        "eighth": ["09"]
+      }
+    },
+    {
+      "draw_key": "DONG_NAI:xs-mn:2026-11-11",
+      "station_code": "DONG_NAI",
+      "product_code": "xs-mn",
+      "draw_date": "2026-11-11",
+      "period_code": "11/2026",
+      "status": "pending_confirmation",
+      "prize_rule_version": 1,
+      "updated_at": "2026-11-11T09:45:00Z",
+      "is_correction": false,
+      "prizes": {
+        "special": ["009876"],
+        "first": ["54321"],
+        "second": ["09876"],
+        "third": ["10101", "20202"],
+        "fourth": ["30303", "30404", "30505"],
+        "fifth": ["0567"],
+        "sixth": ["0001", "0002", "0003"],
+        "seventh": ["017"]
+      }
+    }
+  ]
+}

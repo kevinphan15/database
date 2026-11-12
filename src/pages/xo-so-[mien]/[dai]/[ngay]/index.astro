@@ -1,0 +1,73 @@
+---
+import Base from '../../../../layouts/Base.astro';
+import DateBody from '../../../../components/DateBody.astro';
+import { loadDataset } from '../../../../lib/data';
+import { decideIndex } from '../../../../lib/policy';
+import { drawOnDate, isDrawDay, nearestDrawDate, stationByPath } from '../../../../lib/selectors';
+import { formatVNDate, isISODate } from '../../../../lib/time';
+
+const { mien, dai, ngay } = Astro.params;
+const { dataset, source } = await loadDataset();
+const found = stationByPath(dataset, mien ?? '', dai ?? '');
+const date = ngay ?? '';
+const dateOk = isISODate(date);
+
+let notFound = false;
+if (!found || !dateOk) {
+  notFound = true;
+}
+
+const draw = found && dateOk ? drawOnDate(dataset, found.station.station_code, date) : null;
+
+if (!notFound && found && dateOk && !draw && !isDrawDay(dataset, found.station.station_code, date)) {
+  // Ngày không có lịch quay của đài này → 404, không tạo trang rỗng.
+  notFound = true;
+}
+
+if (notFound) Astro.response.status = 404;
+
+const hasPrizes = draw ? Object.keys(draw.prizes).length > 0 : false;
+const decision = decideIndex({ kind: 'date', hasPrizes });
+const prevDate = found && dateOk ? nearestDrawDate(dataset, date, -1, { stationCode: found.station.station_code }) : null;
+const nextDate = found && dateOk ? nearestDrawDate(dataset, date, 1, { stationCode: found.station.station_code }) : null;
+
+const title =
+  notFound || !found
+    ? 'Không tìm thấy trang'
+    : `Kết quả xổ số ${found.station.name} ngày ${formatVNDate(date)}`;
+---
+
+<Base
+  title={title}
+  description={
+    notFound || !found
+      ? 'Đường dẫn không hợp lệ.'
+      : `Kết quả xổ số ${found.station.name} ngày ${formatVNDate(date)}: bảng giải, trạng thái kỳ và điều hướng kỳ trước/sau.`
+  }
+  decision={decision}
+  canonicalPath={notFound ? null : undefined}
+  dataSource={source}
+  notice={dataset.notice}
+>
+  {
+    notFound || !found ? (
+      <>
+        <h1>Không tìm thấy trang</h1>
+        <p class="lede">
+          Ngày này không có lịch quay của đài, hoặc đường dẫn không đúng.{' '}
+          <a href="/lich-mo-thuong/">Xem lịch mở thưởng</a>.
+        </p>
+      </>
+    ) : (
+      <DateBody
+        dataset={dataset}
+        region={found.region}
+        date={date}
+        stations={[{ station: found.station, draw }]}
+        prevDate={prevDate}
+        nextDate={nextDate}
+        single
+      />
+    )
+  }
+</Base>

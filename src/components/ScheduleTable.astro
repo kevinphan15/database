@@ -1,0 +1,39 @@
+---
+import type { DrawingStation } from '../lib/selectors';
+import { formatVNDate } from '../lib/time';
+
+interface Props {
+  stations: DrawingStation[];
+  date: string;
+}
+
+const { stations, date } = Astro.props;
+---
+
+{stations.length === 0 ? (
+  <p class="meta">Không có đài nào quay trong ngày {formatVNDate(date)}.</p>
+) : (
+  <table>
+    <caption>Đài quay ngày {formatVNDate(date)}</caption>
+    <thead>
+      <tr>
+        <th scope="col">Đài</th>
+        <th scope="col">Miền</th>
+        <th scope="col">Giờ quay</th>
+      </tr>
+    </thead>
+    <tbody>
+      {
+        stations.map(({ station, region, localTime }) => (
+          <tr>
+            <th scope="row">
+              <a href={`/xo-so-${region.slug}/${station.slug}/`}>{station.name}</a>
+            </th>
+            <td>{region.name}</td>
+            <td>{localTime || '—'}</td>
+          </tr>
+        ))
+      }
+    </tbody>
+  </table>
+)}

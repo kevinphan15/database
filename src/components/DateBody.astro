@@ -1,0 +1,94 @@
+---
+import type { Dataset, Draw, Region, Station } from '../lib/types';
+import PrizeTable from './PrizeTable.astro';
+import StatusBadge from './StatusBadge.astro';
+import { rulesFor } from '../lib/selectors';
+import { formatVNDate, formatVNDateLong, formatVNTimeFromISO } from '../lib/time';
+
+interface Props {
+  dataset: Dataset;
+  region: Region;
+  date: string;
+  stations: { station: Station; draw: Draw | null }[];
+  prevDate: string | null;
+  nextDate: string | null;
+  /** Hiển thị tiêu đề lớn (trang miền theo ngày) hay chỉ một đài. */
+  single?: boolean;
+}
+
+const { dataset, region, date, stations, prevDate, nextDate, single = false } = Astro.props;
+const withPrizes = stations.filter(({ draw }) => draw && Object.keys(draw.prizes).length > 0);
+---
+
+<h1>
+  {single && stations[0]
+    ? `Kết quả xổ số ${stations[0].station.name} ngày ${formatVNDate(date)}`
+    : `Kết quả xổ số ${region.name} ngày ${formatVNDate(date)}`}
+</h1>
+<p class="lede">
+  {formatVNDateLong(date)} · Phạm vi tra cứu:{' '}
+  {single && stations[0]
+    ? stations[0].station.name
+    : `${region.name} — ${stations.length} đài có lịch quay`}
+</p>
+
+{
+  stations.length === 0 ? (
+    <p class="card meta">Không có đài nào quay trong ngày này.</p>
+  ) : (
+    stations.map(({ station, draw }) => (
+      <section class="card">
+        <h2>
+          {!single && <a href={`/xo-so-${region.slug}/${station.slug}/`}>{station.name}</a>}
+          {single && station.name}
+        </h2>
+        {draw ? (
+          <>
+            <p class="meta">
+              <StatusBadge status={draw.status} />
+              {draw.period_code && <> · kỳ {draw.period_code}</>}
+              {draw.updated_at && <> · cập nhật {formatVNTimeFromISO(draw.updated_at)}</>}
+              {draw.is_correction && <> · <strong>đã đính chính</strong></>}
+            </p>
+            <PrizeTable
+              prizes={draw.prizes}
+              rules={rulesFor(dataset, draw.prize_rule_version)}
+              caption={`${station.name} — ${formatVNDate(date)}`}
+            />
+          </>
+        ) : (
+          <p class="meta">Có lịch quay nhưng chưa có dữ liệu cho ngày này.</p>
+        )}
+      </section>
+    ))
+  )
+}
+
+<nav class="card" aria-label="Điều hướng ngày">
+  <h2>Ngày khác</h2>
+  <ul class="link-list">
+    {prevDate && (
+      <li>
+        <a href={`/xo-so-${region.slug}/${single && stations[0] ? `${stations[0].station.slug}/` : ''}${prevDate}/`}>
+          ← Kỳ trước: {formatVNDate(prevDate)}
+        </a>
+      </li>
+    )}
+    {nextDate && (
+      <li>
+        <a href={`/xo-so-${region.slug}/${single && stations[0] ? `${stations[0].station.slug}/` : ''}${nextDate}/`}>
+          Kỳ sau: {formatVNDate(nextDate)} →
+        </a>
+      </li>
+    )}
+    <li>
+      <a href={single && stations[0] ? `/xo-so-${region.slug}/${stations[0].station.slug}/` : `/xo-so-${region.slug}/`}>
+        Xem kỳ mới nhất
+      </a>
+    </li>
+    <li>
+      <a href="/so-ket-qua/">Sổ kết quả</a>
+    </li>
+  </ul>
+  {withPrizes.length === 0 && <p class="meta">Trang này chưa có số nào nên không được đưa vào chỉ mục.</p>}
+</nav>

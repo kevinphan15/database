@@ -1,0 +1,182 @@
+---
+import Base from '../../layouts/Base.astro';
+import { loadDataset } from '../../lib/data';
+import { decideIndex } from '../../lib/policy';
+import { allowTicketCheck } from '../../lib/ratelimit';
+import { drawsOfStation, rulesFor } from '../../lib/selectors';
+import { checkTicket, TICKET_LENGTH } from '../../lib/ticket';
+import { formatVNDate } from '../../lib/time';
+import type { TicketOutcome } from '../../lib/ticket';
+
+const { dataset, source } = await loadDataset();
+const stations = dataset.stations.filter((s) => s.status === 'active');
+const isPost = Astro.request.method === 'POST';
+
+const querySlug = Astro.url.searchParams.get('dai') ?? '';
+let stationSlug = querySlug;
+let outcome: TicketOutcome | null = null;
+let submittedTicket = '';
+let submittedDate = '';
+let rateLimited = false;
+
+if (isPost) {
+  const form = await Astro.request.formData();
+  submittedTicket = String(form.get('ticket') ?? '');
+  submittedDate = String(form.get('date') ?? '');
+  stationSlug = String(form.get('dai') ?? stationSlug);
+
+  const ip = Astro.request.headers.get('CF-Connecting-IP') ?? Astro.clientAddress ?? 'unknown';
+  if (!(await allowTicketCheck(`ticket:${ip}`))) {
+    rateLimited = true;
+  } else {
+    const station = stations.find((s) => s.slug === stationSlug) ?? stations[0] ?? null;
+    if (!station) {
+      outcome = { kind: 'not-confirmed', message: 'Chưa có đài nào trong dữ liệu để đối chiếu.' };
+    } else {
+      const draw = dataset.draws.find(
+        (d) => d.station_code === station.station_code && d.draw_date === submittedDate,
+      ) ?? null;
+      outcome = checkTicket(submittedTicket, draw, rulesFor(dataset, draw?.prize_rule_version ?? 1));
+    }
+  }
+}
+
+const station = stations.find((s) => s.slug === stationSlug) ?? stations[0] ?? null;
+const region = station ? dataset.regions.find((r) => r.code === station.region_code) ?? null : null;
+const confirmedDraws = station
+  ? drawsOfStation(dataset, station.station_code).filter((d) => d.status === 'confirmed')
+  : [];
+const selectedDate = submittedDate || confirmedDraws[0]?.draw_date || '';
+
+// Trang công cụ được index; kết quả dò (POST) thì không.
+const decision = decideIndex({ kind: isPost ? 'ticket-check' : 'ticket-tool' });
+if (isPost) {
+  Astro.response.headers.set('X-Robots-Tag', 'noindex, follow');
+  Astro.response.headers.set('Cache-Control', 'no-store');
+}
+---
+
+<Base
+  title="Dò vé số"
+  description="Nhập số vé, chọn đài và ngày để đối chiếu với bảng kết quả đã xác nhận."
+  decision={decision}
+  canonicalPath="/do-ve-so/"
+  dataSource={source}
+  notice={dataset.notice}
+>
+  <h1>Dò vé số</h1>
+  <p class="lede">
+    Chỉ đối chiếu trên kỳ <strong>đã xác nhận</strong>. Số vé gồm {TICKET_LENGTH} chữ số, giữ nguyên số 0
+    ở đầu.
+  </p>
+
+  <section class="card">
+    <h2>Chọn đài</h2>
+    <ul class="link-list">
+      {stations.map((item) => (
+        <li>
+          <a href={`/do-ve-so/?dai=${item.slug}`}>{item.name}</a>
+          {item.slug === station?.slug && <strong> ← đang chọn</strong>}
+        </li>
+      ))}
+    </ul>
+  </section>
+
+  {
+    rateLimited && (
+      <p class="card" role="alert">
+        <strong>Quá nhiều lần dò.</strong> Vui lòng thử lại sau khoảng một phút.
+      </p>
+    )
+  }
+
+  {
+    outcome && (
+      <section class="card" role="status" aria-live="polite">
+        <h2>Kết quả đối chiếu</h2>
+        {outcome.kind === 'prize' ? (
+          <>
+            <p>
+              <strong>{outcome.message}</strong>
+            </p>
+            <ul class="link-list">
+              {outcome.hits.map((hit) => (
+                <li>
+                  {hit.label} — số trúng <span class="num">{hit.matched}</span>
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : (
+          <p>{outcome.message}</p>
+        )}
+        <p class="meta">
+          Kết quả dò chỉ mang tính tham khảo; đơn vị phát hành là bên xác nhận cuối cùng.
+        </p>
+      </section>
+    )
+  }
+
+  <section class="card">
+    <h2>Nhập số vé</h2>
+    {station && region ? (
+      confirmedDraws.length > 0 ? (
+        <form method="post" action="/do-ve-so/">
+          <input type="hidden" name="dai" value={station.slug} />
+          <p>
+            <label for="date">Ngày quay của {station.name}</label>
+            <br />
+            <select id="date" name="date" required>
+              {confirmedDraws.map((draw) => (
+                <option value={draw.draw_date} selected={draw.draw_date === selectedDate}>
+                  {formatVNDate(draw.draw_date)}
+                </option>
+              ))}
+            </select>
+          </p>
+          <p>
+            <label for="ticket">Số vé ({TICKET_LENGTH} chữ số)</label>
+            <br />
+            <input
+              id="ticket"
+              name="ticket"
+              inputmode="numeric"
+              autocomplete="off"
+              maxlength={TICKET_LENGTH}
+              pattern="[0-9]{6}"
+              placeholder="012345"
+              value={submittedTicket}
+              required
+            />
+          </p>
+          <p>
+            <button type="submit">Đối chiếu</button>
+          </p>
+          <p class="meta">
+            Danh sách ngày chỉ gồm kỳ đã xác nhận của {station.name}. Kỳ chưa đối soát không dùng để dò.
+          </p>
+        </form>
+      ) : (
+        <p class="meta">
+          Đài {station.name} chưa có kỳ nào đã xác nhận nên chưa thể đối chiếu. Xem{' '}
+          <a href={`/so-ket-qua/?dai=${station.slug}`}>sổ kết quả</a>.
+        </p>
+      )
+    ) : (
+      <p class="meta">Chưa có đài nào trong dữ liệu.</p>
+    )}
+  </section>
+
+  <section class="card">
+    <h2>Cần biết trước khi dò</h2>
+    <ul class="link-list">
+      <li>
+        <a href="/huong-dan/cach-do-ve-so/">Cách dò vé số</a> — cách đọc đài, ngày và số vé.
+      </li>
+      <li>
+        <a href="/huong-dan/co-cau-giai/">Cơ cấu giải và nhận thưởng</a> — các hạng giải và giấy tờ cần
+        chuẩn bị.
+      </li>
+    </ul>
+  </section>
+</Base>

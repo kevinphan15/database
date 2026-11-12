@@ -1,0 +1,131 @@
+---
+import Base from '../../layouts/Base.astro';
+import StatusBadge from '../../components/StatusBadge.astro';
+import { loadDataset } from '../../lib/data';
+import { scheduleOfStation, stationsDrawingOn, stationsOfRegion } from '../../lib/selectors';
+import { addDays, formatVNDate, formatVNDateLong, isoWeekday, todayInVN, weekdayName } from '../../lib/time';
+import { decideIndex } from '../../lib/policy';
+
+const { dataset, source } = await loadDataset();
+const today = todayInVN();
+const drawingToday = stationsDrawingOn(dataset, today);
+
+// Lịch tuần: 7 ngày tới, tính từ hôm nay.
+const week = Array.from({ length: 7 }, (_, i) => addDays(today, i)).map((date) => ({
+  date,
+  weekday: isoWeekday(date),
+  stations: stationsDrawingOn(dataset, date),
+}));
+
+const decision = decideIndex({ kind: 'schedule' });
+const hasExceptions = dataset.exceptions.length > 0;
+---
+
+<Base
+  title="Lịch mở thưởng xổ số — đài quay hôm nay và cả tuần"
+  description="Lịch mở thưởng theo ngày: đài quay hôm nay, lịch tuần theo miền, ngày nghỉ hoặc đổi lịch."
+  decision={decision}
+  dataSource={source}
+  notice={dataset.notice}
+>
+  <h1>Lịch mở thưởng</h1>
+  <p class="lede">
+    Hôm nay là <strong>{formatVNDateLong(today)}</strong>. Lịch dưới đây áp dụng theo lịch tuần của
+    từng đài; ngày nghỉ hoặc đổi lịch được ghi riêng.
+  </p>
+
+  <section class="card">
+    <h2>Đài quay hôm nay</h2>
+    {drawingToday.length === 0 ? (
+      <p class="meta">Hôm nay không có đài nào quay.</p>
+    ) : (
+      <table>
+        <caption>{formatVNDate(today)}</caption>
+        <thead>
+          <tr>
+            <th scope="col">Đài</th>
+            <th scope="col">Miền</th>
+            <th scope="col">Giờ</th>
+            <th scope="col">Kỳ</th>
+          </tr>
+        </thead>
+        <tbody>
+          {drawingToday.map(({ station, region, localTime, draw }) => (
+            <tr>
+              <th scope="row">
+                <a href={`/xo-so-${region.slug}/${station.slug}/`}>{station.name}</a>
+              </th>
+              <td>{region.name}</td>
+              <td>{localTime || '—'}</td>
+              <td>{draw ? <StatusBadge status={draw.status} /> : <span class="meta">Chờ mở thưởng</span>}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    )}
+  </section>
+
+  <section class="card">
+    <h2>Lịch 7 ngày tới</h2>
+    <table>
+      <caption>Lịch theo ngày, tính từ {formatVNDate(today)}</caption>
+      <thead>
+        <tr>
+          <th scope="col">Ngày</th>
+          <th scope="col">Đài quay</th>
+        </tr>
+      </thead>
+      <tbody>
+        {week.map(({ date, weekday, stations }) => (
+          <tr>
+            <th scope="row">
+              {weekdayName(weekday)}
+              <br />
+              <span class="meta">{formatVNDate(date)}</span>
+            </th>
+            <td>
+              {stations.length === 0 ? (
+                <span class="meta">Không có đài</span>
+              ) : (
+                stations.map(({ station, region }, index) => (
+                  <>
+                    {index > 0 && ', '}
+                    <a href={`/xo-so-${region.slug}/${station.slug}/`}>{station.name}</a>
+                  </>
+                ))
+              )}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </section>
+
+  <section class="card">
+    <h2>Lịch ngoại lệ</h2>
+    {hasExceptions ? (
+      <ul class="link-list">
+        {dataset.exceptions.map((exception) => (
+          <li>
+            {formatVNDate(exception.exception_date)} —{' '}
+            {exception.action === 'skip' ? 'nghỉ' : `đổi sang ${exception.new_date ?? '—'}`}
+          </li>
+        ))}
+      </ul>
+    ) : (
+      <p class="meta">Chưa có ngày nghỉ hoặc đổi lịch nào được ghi nhận.</p>
+    )}
+  </section>
+
+  <section class="card">
+    <h2>Theo miền</h2>
+    <ul class="link-list">
+      {dataset.regions.map((region) => (
+        <li>
+          <a href={`/xo-so-${region.slug}/`}>{region.name}</a> —{' '}
+          {stationsOfRegion(dataset, region.code).length} đài
+        </li>
+      ))}
+    </ul>
+  </section>
+</Base>

@@ -1,0 +1,22 @@
+{
+  "name": "xoso-web",
+  "type": "module",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Website kết quả xổ số - Astro SSR trên Cloudflare Workers + D1",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "test": "vitest run",
+    "db:local:init": "wrangler d1 execute xoso-db --local --file=./migrations/0001_init.sql",
+    "db:local:seed": "wrangler d1 execute xoso-db --local --file=./migrations/0002_seed.sql"
+  },
+  "dependencies": {
+    "@astrojs/cloudflare": "^14.4.7",
+    "astro": "^7.4.11",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0",
+    "wrangler": "^4.161.0"
+  }
+}

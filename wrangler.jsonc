@@ -1,0 +1,46 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "xoso-web",
+  "compatibility_date": "2026-11-12",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "./dist"
+  },
+  "observability": {
+    "enabled": true
+  },
+  "vars": {
+    "APP_ENV": "development"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "xoso-db",
+      // TODO(chặng 4): thay bằng UUID thật sau khi `wrangler d1 create xoso-db`
+      "database_id": "00000000-0000-0000-0000-000000000000"
+    }
+  ],
+  // Giới hạn tần suất cho công cụ dò vé (xấp xỉ, theo từng location).
+  "ratelimits": [
+    {
+      "name": "TICKET_LIMITER",
+      "namespace_id": "1001",
+      "simple": { "limit": 10, "period": 60 }
+    }
+  ],
+  "env": {
+    "production": {
+      "name": "xoso-web",
+      "vars": {
+        "APP_ENV": "production"
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "xoso-db",
+          "database_id": "00000000-0000-0000-0000-000000000000"
+        }
+      ]
+    }
+  }
+}

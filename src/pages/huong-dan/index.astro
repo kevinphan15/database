@@ -1,0 +1,31 @@
+---
+import Base from '../../layouts/Base.astro';
+import { getCollection } from 'astro:content';
+import { decideIndex } from '../../lib/policy';
+
+const guides = (await getCollection('guides')).sort((a, b) => a.data.order - b.data.order);
+const decision = decideIndex({ kind: 'guide' });
+---
+
+<Base
+  title="Hướng dẫn tra cứu và dò vé"
+  description="Các bài hướng dẫn cách đọc kết quả, dò vé số, cơ cấu giải và nguồn dữ liệu của website."
+  decision={decision}
+>
+  <h1>Hướng dẫn</h1>
+  <p class="lede">Các bài giải thích cách đọc kết quả và cách dùng công cụ dò vé.</p>
+
+  <section class="card">
+    <ul class="link-list">
+      {
+        guides.map((guide) => (
+          <li>
+            <a href={`/huong-dan/${guide.id}/`}>{guide.data.title}</a>
+            <br />
+            <span class="meta">{guide.data.description}</span>
+          </li>
+        ))
+      }
+    </ul>
+  </section>
+</Base>
