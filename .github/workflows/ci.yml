@@ -20,7 +20,7 @@ jobs:
         run: npm test
       - name: Build
         run: npm run build
-      - name: Kiểm tra migration D1 chạy được trên SQLite local
+      - name: Kiểm tra migration + seed local chạy được trên SQLite
         run: |
           npm run db:local:init
           npm run db:local:seed

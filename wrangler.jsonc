@@ -9,14 +9,11 @@
   "observability": {
     "enabled": true
   },
-  "vars": {
-    "APP_ENV": "development"
-  },
+  // Một chỗ duy nhất: TODO(chặng 4) thay bằng UUID thật sau khi `wrangler d1 create xoso-db`.
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "xoso-db",
-      // TODO(chặng 4): thay bằng UUID thật sau khi `wrangler d1 create xoso-db`
       "database_id": "00000000-0000-0000-0000-000000000000"
     }
   ],
@@ -32,20 +29,5 @@
       "namespace_id": "1002",
       "simple": { "limit": 60, "period": 60 }
     }
-  ],
-  "env": {
-    "production": {
-      "name": "xoso-web",
-      "vars": {
-        "APP_ENV": "production"
-      },
-      "d1_databases": [
-        {
-          "binding": "DB",
-          "database_name": "xoso-db",
-          "database_id": "00000000-0000-0000-0000-000000000000"
-        }
-      ]
-    }
-  }
+  ]
 }

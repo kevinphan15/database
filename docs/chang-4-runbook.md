@@ -10,15 +10,15 @@ code trước** khi deploy; phần còn lại là thao tác tài khoản Cloudfl
 | 0.1 | Bật **2FA** cho tài khoản Cloudflare | Dashboard → My Profile → Authentication |
 | 0.2 | Tạo API token **scoped** cho CI: `Workers Scripts:Edit` + `D1:Edit`, giới hạn account | `npx wrangler whoami` từ CI |
 | 0.3 | Chốt lựa chọn domain: **custom domain** (cần zone trong account) hay `xoso-web.<account>.workers.dev` | Xem mục 4 |
-| 0.4 | 🔧 Dọn `wrangler.jsonc`: chỉ giữ **một** khai báo (bỏ `env.production` trùng tên với top-level, hoặc bỏ top-level) và điền `database_id` thật ở chỗ còn lại | `npx wrangler deploy --dry-run` |
-| 0.5 | 🔧 Bỏ số liệu mẫu khỏi đường deploy: chuyển `migrations/0002_seed.sql` sang `seed/`, thêm `migrations/0004_sources.sql` chứa nguồn thật | `grep -r "fixture" migrations/` rỗng |
+| 0.4 | ✅ `wrangler.jsonc` đã dọn: chỉ còn top-level, `database_id` chỉ có **một** chỗ | `grep -c "database_id" wrangler.jsonc` → `1` |
+| 0.5 | 🔧 Bỏ số liệu mẫu khỏi đường deploy: seed đã nằm ở `seed/0002_seed.sql`; còn phải thêm `migrations/0004_sources.sql` chứa nguồn thật | `ls migrations/` không có file seed |
 | 0.6 | 🔧 Đấu **công tắc index** vào code (xem mục 7.0) — hiện `indexEnabled` có trong `policy.ts` nhưng chưa nơi nào truyền | `grep -rn "indexEnabled" src` |
 
 ## 1. Tạo D1 thật và nạp schema
 
 ```bash
 npx wrangler d1 create xoso-db
-# ghi lại database_id, điền vào wrangler.jsonc (cả binding DB, không chỉ env)
+# ghi lại database_id, điền vào wrangler.jsonc (chỉ một chỗ duy nhất, binding DB)
 npx wrangler d1 list                      # thấy xoso-db + id khớp file config
 npx wrangler d1 export xoso-db --remote --output backup-$(date +%Y%m%d).sql   # lần đầu sẽ rỗng
 npx wrangler d1 execute xoso-db --remote --file=./migrations/0001_init.sql
@@ -26,8 +26,9 @@ npx wrangler d1 execute xoso-db --remote --file=./migrations/0003_chang3.sql
 npx wrangler d1 execute xoso-db --remote --file=./migrations/0004_sources.sql
 ```
 
-**Không chạy `0002_seed.sql` ở remote** — đó là dữ liệu GIẢ (`data_mode = fixture`), sẽ hiện banner
-"DỮ LIỆU MẪU" và số sai trên domain thật.
+**Không chạy `seed/0002_seed.sql` ở remote** — đó là dữ liệu GIẢ (`data_mode = fixture`), sẽ hiện
+banner "DỮ LIỆU MẪU" và số sai trên domain thật. File seed đã được đưa ra khỏi `migrations/` đúng vì
+lý do này; chỉ `migrations/` được phép chạy lên D1 thật.
 
 Kiểm:
 
@@ -64,6 +65,10 @@ Dashboard → Workers & Pages → `xoso-web` → Settings → Builds:
 
 GitHub Actions hiện chỉ test/build + chạy migration trên SQLite local — giữ nguyên làm hàng rào
 trước khi Workers Builds deploy. Sau khi nối, mỗi push `main` phải xanh cả hai nơi.
+
+> `wrangler deploy` đọc config **đã sinh** ở `dist/server/wrangler.json` (Wrangler báo "Using
+> redirected Wrangler configuration"), nên phải `npm run build` trước khi deploy — đừng deploy bằng
+> bản `dist/` cũ sau khi sửa `wrangler.jsonc`.
 
 ## 4. Subdomain
 
