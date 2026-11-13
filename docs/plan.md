@@ -1,6 +1,6 @@
 # Kế hoạch tổng thể — Website kết quả xổ số
 
-**Phiên bản:** 3.2 · **Ngày:** 12/11/2026 · **Trạng thái:** đã duyệt, xong chặng 1–3, tiếp theo chặng 4
+**Phiên bản:** 3.3 · **Ngày:** 13/11/2026 · **Trạng thái:** đã duyệt, xong chặng 1–3, đang làm chặng 4
 
 ## 1. Quyết định đã chốt
 
@@ -74,7 +74,7 @@ Công tắc sự cố: `settings.publish_enabled = 0` → ingest bị từ chố
 
 | Endpoint | Vai trò |
 |---|---|
-| `GET /api/v1/results` · `GET /api/v1/schedule` | công khai; schedule trả thêm `window_start_utc`, `window_end_utc`, `expected_final_at_utc` |
+| `GET /api/v1/results` · `GET /api/v1/schedule` | công khai; schedule trả thêm `window_start_utc`, `window_end_utc`, `expected_final_at_utc`; cả hai trả `degraded: true` khi không đọc được D1 |
 | `POST /api/v1/ticket-check` | công khai; POST, không log số vé, rate limit |
 | `POST /internal/v1/result-observations` | n8n; Bearer + `Idempotency-Key`; 201/200/401/403/409/422/429 |
 | `POST /internal/v1/schedule-sync` | n8n; kiểm tra cả lô trước khi kích hoạt |
@@ -100,7 +100,7 @@ trùng lặp trong cùng site).
 
 | Loại | Header |
 |---|---|
-| Asset có hash | `max-age=31536000, immutable` |
+| Asset có hash | `max-age=31536000, immutable` (hiện CSS ~3 KB được inline vào HTML nên chưa có asset hash) |
 | Trang kỳ đã confirmed | `s-maxage=30..60, stale-while-revalidate=120` |
 | Trang hôm nay / live / API kết quả | `no-store` |
 | `/internal/*`, ticket-check | `no-store, private` |
@@ -132,6 +132,7 @@ Chọn TTL thay vì purge: đính chính lan trong ≤ TTL.
 1. Tên subdomain cụ thể (chặng 4).
 2. Danh sách nguồn cào + nguồn nào là authoritative: chặng 3 đã dựng luật và nguồn MẪU
    (`src-official` authoritative, `src-backup` thường) để kiểm thử; nguồn thật đầu tiên đã có ở
-   `migrations/0004_sources.sql` (`src-official` authoritative, `src-live` không), chờ xác nhận quyền
-   sử dụng lại trước khi bật index.
+   `migrations/0004_sources.sql` (`src-official` authoritative, `src-live` không) và dữ liệu tham chiếu
+   (miền, đài, sản phẩm, 9 giải, lịch quay) ở `migrations/0005_reference.sql`, chờ xác nhận quyền sử
+   dụng lại trước khi bật index.
 3. Bật 2FA Cloudflare (trước chặng 4).

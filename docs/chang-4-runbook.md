@@ -54,7 +54,7 @@ URL (8 trang tĩnh + miền + đài + ngày). Nếu chỉ chạy `0001 + 0004` t
 
 > `migrations/0003_chang3.sql` đã bị xoá: nó chỉ chứa 3 index trùng tên với `0001` (nên chưa bao giờ
 > được áp) và 1 index không truy vấn nào dùng, cộng 2 nguồn mẫu. Chuỗi production hiện tại là
-> `0001_init.sql` + `0004_sources.sql`.
+> `0001_init.sql` + `0004_sources.sql` + `0005_reference.sql`.
 >
 > Vì `settings` rỗng nghĩa là **mọi công tắc đang bật**, phải chạy mục 5 (deploy tối) trước khi trỏ
 > domain vào, nếu không site sẽ index ngay từ request đầu tiên.
@@ -97,7 +97,8 @@ Nếu chỉ chạy `0001` (chưa có `0004/0005`): mọi trang vẫn 200 nhưng 
 “Tạm thời chưa tải được dữ liệu kết quả…”; trang miền/đài/ngày trả **503** kèm câu “đây không phải
 lỗi đường dẫn”, không trả 404 (404 cho URL đúng sẽ khiến công cụ tìm kiếm và uptime check hiểu sai);
 các trang nội dung 200 với câu giải thích riêng thay vì “hôm nay không có đài nào quay”; API trả
-`"degraded": true` + `notice`. Đo bằng Worker trỏ vào D1 chưa có bảng nào.
+`"degraded": true` + `notice`; `robots.txt` là `Disallow: /` và sitemap rỗng vì không đọc được công
+tắc thì index coi như tắt (fail-closed). Đo bằng Worker trỏ vào D1 chưa có bảng nào.
 
 Quy tắc đằng sau: **có binding D1 thì không bao giờ rơi về fixture**, kể cả khi D1 rỗng hoặc lỗi truy
 vấn — thà trang trống còn hơn hiện số giả trên domain thật. Fixture chỉ xuất hiện khi chạy
@@ -128,8 +129,9 @@ Dashboard → Workers & Pages → `xoso-web` → Settings → Builds:
 | Root directory | `/` |
 | Env | `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` (token ở 0.2) |
 
-GitHub Actions hiện chỉ test/build + chạy migration trên SQLite local — giữ nguyên làm hàng rào
-trước khi Workers Builds deploy. Sau khi nối, mỗi push `main` phải xanh cả hai nơi.
+GitHub Actions hiện chạy test/build, `npm run check:n8n` (4 workflow phải là JSON hợp lệ) và thử
+migration + seed trên SQLite local — giữ nguyên làm hàng rào trước khi Workers Builds deploy. Sau khi
+nối, mỗi push `main` phải xanh cả hai nơi.
 
 > `wrangler deploy` đọc config **đã sinh** ở `dist/server/wrangler.json` (Wrangler báo "Using
 > redirected Wrangler configuration"), nên phải `npm run build` trước khi deploy — đừng deploy bằng
@@ -252,7 +254,9 @@ deploy tối không tự mở index vì sự cố D1); fixture mặc định b�
 - `sitemap.xml`: tắt → urlset rỗng (vẫn 200); bật → danh sách URL như cũ.
 - Middleware: tắt → gắn `X-Robots-Tag: noindex` cho mọi response, **không ghi đè** header trang đã
   tự đặt (ví dụ kết quả dò vé `noindex, follow`).
-- Test: `tests/index-switch.test.ts` (policy, robots, sitemap, middleware).
+- Test: `tests/index-switch.test.ts` (policy, robots, sitemap, middleware),
+  `tests/index-fail-closed.test.ts` (D1 lỗi đọc settings → robots chặn + sitemap rỗng, còn thiếu hàng
+  thì vẫn bật) và `tests/degraded-pages.test.ts` (banner + 503 + `degraded` trong API).
 
 Còn lại (không chặn deploy): bảng `index_policy` trong D1 vẫn chưa được đọc — hiện là dự phòng cho
 luật index theo mẫu URL.
@@ -298,7 +302,7 @@ luật index theo mẫu URL.
 - [ ] 2 secret đã đặt, token CI scoped, 2FA bật
 - [ ] Workers Builds deploy xanh từ `main`; CI xanh
 - [ ] Subdomain/workers.dev trả 200 qua HTTPS
-- [ ] Checklist mục 6 (23 mục) xanh
+- [ ] Checklist mục 6 (24 mục) xanh
 - [ ] Đã diễn tập rollback Worker + tắt `publish_enabled`
 - [ ] Index đã bật, robots/sitemap/meta đúng, sitemap đã submit
 - [ ] n8n chạy ít nhất 1 kỳ thật end-to-end (live → final → confirmed/disputed)
