@@ -167,12 +167,6 @@ describe('404 không được cache theo heuristic', () => {
     expect(status).toBe(404);
     expect(cacheControl).toBe('no-store');
   });
-
-  it('trang 200 bình thường không bị gán no-store', async () => {
-    const { status, cacheControl } = await render(HomePage, '/');
-    expect(status).toBe(200);
-    expect(cacheControl).toBe('');
-  });
 });
 
 describe('không có lỗi D1 → không 503, không banner', () => {
@@ -198,6 +192,11 @@ describe('không có lỗi D1 → không 503, không banner', () => {
     expect(status).toBe(404);
   });
 
+  it('trang 200 bình thường không bị gán no-store', async () => {
+    const { status, cacheControl } = await render(HomePage, '/');
+    expect(status).toBe(200);
+    expect(cacheControl).toBe('');
+  });
 });
 
 describe('API báo lỗi D1 bằng degraded', () => {

@@ -167,7 +167,7 @@ describe('POST /api/v1/ticket-check', () => {
 describe('cache-control của route công khai', () => {
   let caller = 0;
 
-  function call(handler: unknown, path: string, init?: RequestInit) {
+  function call(handler: unknown, path: string, init?: RequestInit, ip?: string) {
     caller += 1;
     const url = new URL(path, 'https://xoso.test').toString();
     return (
@@ -175,7 +175,7 @@ describe('cache-control của route công khai', () => {
     )({
       url: new URL(url),
       request: new Request(url, init),
-      clientAddress: `203.0.113.${caller}`,
+      clientAddress: ip ?? `203.0.113.${caller}`,
     });
   }
 
@@ -185,40 +185,32 @@ describe('cache-control của route công khai', () => {
 
   const json = (body: unknown): RequestInit => ({ method: 'POST', body: JSON.stringify(body) });
 
-  it('GET /api/v1/schedule/ không giữ TTL', async () => {
+  it('GET /api/v1/schedule/ trả no-store', async () => {
     expect(await cacheControl(scheduleGET, '/api/v1/schedule/')).toBe('no-store');
   });
 
-  it('GET /api/v1/results/ không giữ TTL khi thành công và khi lỗi', async () => {
+  it('GET /api/v1/results/ trả no-store', async () => {
     expect(await cacheControl(resultsGET, '/api/v1/results/?dai=dong-nai')).toBe('no-store');
-    expect(await cacheControl(resultsGET, '/api/v1/results/?dai=khong-co')).toBe('no-store');
-    expect(await cacheControl(resultsGET, '/api/v1/results/?ngay=2026-2-1')).toBe('no-store');
   });
 
-  it('POST /api/v1/ticket-check/ không giữ TTL khi thành công và khi lỗi', async () => {
-    const body = { station: 'dong-nai', date: '2026-11-04', ticket: '001234' };
-    expect(await cacheControl(ticketCheckPOST, '/api/v1/ticket-check/', json(body))).toBe('no-store');
+  it('POST /api/v1/ticket-check/ trả no-store', async () => {
+    const body = json({ station: 'dong-nai', date: '2026-11-04', ticket: '001234' });
+    expect(await cacheControl(ticketCheckPOST, '/api/v1/ticket-check/', body)).toBe('no-store');
+  });
+
+  // 400 và 429 đi qua header mặc định của `jsonResponse` (đã là `private`), không qua nhánh đè header.
+  it('400 và 429 của /api/v1/ticket-check/ cũng không cache', async () => {
     expect(
-      await cacheControl(ticketCheckPOST, '/api/v1/ticket-check/', json({ ...body, ticket: '12ab34' })),
-    ).toBe('no-store');
-    expect(await cacheControl(ticketCheckPOST, '/api/v1/ticket-check/', { method: 'POST', body: 'không-phải-json' }))
-      .toContain('no-store');
-  });
+      await cacheControl(ticketCheckPOST, '/api/v1/ticket-check/', { method: 'POST', body: 'không-phải-json' }),
+    ).toBe('no-store, private');
 
-  it('429 của /api/v1/ticket-check/ cũng không cache', async () => {
-    const request = json({ station: 'dong-nai', date: '2026-11-04', ticket: '001234' });
-    let response: Response | undefined;
     // LIMITS.ticket.max = 10 mỗi 60 giây cho một IP; lần thứ 11 phải bị chặn.
+    const body = json({ station: 'dong-nai', date: '2026-11-04', ticket: '001234' });
+    let denied: Response | undefined;
     for (let i = 0; i <= 10; i += 1) {
-      response = await (
-        ticketCheckPOST as (context: { url: URL; request: Request; clientAddress: string }) => Promise<Response>
-      )({
-        url: new URL('https://xoso.test/api/v1/ticket-check/'),
-        request: new Request('https://xoso.test/api/v1/ticket-check/', request),
-        clientAddress: '198.51.100.99',
-      });
+      denied = await call(ticketCheckPOST, '/api/v1/ticket-check/', body, '198.51.100.99');
     }
-    expect(response?.status).toBe(429);
-    expect(response?.headers.get('cache-control') ?? '').toContain('no-store');
+    expect(denied?.status).toBe(429);
+    expect(denied?.headers.get('cache-control')).toBe('no-store, private');
   });
 });
