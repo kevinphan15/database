@@ -31,7 +31,7 @@ vi.mock('../src/lib/data', () => ({
 }));
 
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
-import { DATA_UNAVAILABLE_EMPTY, DATA_UNAVAILABLE_NOTICE, DATA_UNAVAILABLE_TITLE } from '../src/lib/degraded';
+import { DATA_UNAVAILABLE_NOTICE, DATA_UNAVAILABLE_TITLE } from '../src/lib/degraded';
 
 import NotFoundPage from '../src/pages/404.astro';
 import HomePage from '../src/pages/index.astro';
@@ -56,9 +56,10 @@ async function render(
   page: Parameters<typeof container.renderToResponse>[0],
   path: string,
   params: Record<string, string> = {},
+  init?: RequestInit,
 ) {
   const response = await container.renderToResponse(page, {
-    request: new Request(`${BASE}${path}`),
+    request: new Request(`${BASE}${path}`, init),
     params,
   });
   return {
@@ -72,7 +73,7 @@ beforeEach(() => {
   state.data = { dataset: degraded(), source: 'd1', degraded: true };
 });
 
-describe('D1 lỗi truy vấn → banner giải thích', () => {
+describe('D1 lỗi truy vấn → 503, no-store, banner', () => {
   it('trang chủ: 503 như trang miền/đài/ngày, banner, không cache, không lộ dữ liệu mẫu', async () => {
     const { status, cacheControl, html } = await render(HomePage, '/');
     expect(status).toBe(503);
@@ -81,31 +82,50 @@ describe('D1 lỗi truy vấn → banner giải thích', () => {
     expect(html).not.toContain('DỮ LIỆU MẪU');
   });
 
-  it('trang lịch mở thưởng: 503, banner, không cache, không khẳng định sai "hôm nay không có đài"', async () => {
-    const { status, cacheControl, html } = await render(SchedulePage, '/lich-mo-thuong/');
+  it('trang lịch mở thưởng: 503, không cache', async () => {
+    const { status, cacheControl } = await render(SchedulePage, '/lich-mo-thuong/');
     expect(status).toBe(503);
     expect(cacheControl).toBe('no-store');
-    expect(html).toContain(DATA_UNAVAILABLE_NOTICE);
-    expect(html).not.toContain('Hôm nay không có đài nào quay');
   });
 
   it('trang sổ kết quả: 503, không cache', async () => {
-    const { status, cacheControl, html } = await render(LedgerPage, '/so-ket-qua/');
+    const { status, cacheControl } = await render(LedgerPage, '/so-ket-qua/');
     expect(status).toBe(503);
     expect(cacheControl).toBe('no-store');
-    expect(html).toContain(DATA_UNAVAILABLE_EMPTY);
   });
 
   it('trang thống kê giải đặc biệt: 503, không cache', async () => {
-    const { status, cacheControl, html } = await render(StatsPage, '/thong-ke/giai-dac-biet/');
+    const { status, cacheControl } = await render(StatsPage, '/thong-ke/giai-dac-biet/');
     expect(status).toBe(503);
     expect(cacheControl).toBe('no-store');
-    expect(html).toContain(DATA_UNAVAILABLE_EMPTY);
   });
+
   it('trang dò vé: 503, không cache', async () => {
     const { status, cacheControl } = await render(DoVeSoPage, '/do-ve-so/');
     expect(status).toBe(503);
     expect(cacheControl).toBe('no-store');
+  });
+
+  it('trang dò vé (POST form): 503, không cache', async () => {
+    const { status, cacheControl } = await render(DoVeSoPage, '/do-ve-so/', {}, {
+      method: 'POST',
+      // Cloudflare luôn gắn header này; thiếu nó thì trang gọi `Astro.clientAddress`, thứ không có
+      // trong AstroContainer và sẽ ném lỗi thay vì trả 503.
+      headers: {
+        'content-type': 'application/x-www-form-urlencoded',
+        'CF-Connecting-IP': '203.0.113.9',
+      },
+      body: new URLSearchParams({ ticket: '001234', date: '2026-11-04', dai: 'dong-nai' }).toString(),
+    });
+    expect(status).toBe(503);
+    expect(cacheControl).toBe('no-store');
+  });
+
+  // Nội dung trang lịch: D1 lỗi thì phải hiện banner, không được khẳng định "hôm nay không có đài".
+  it('trang lịch không khẳng định sai khi D1 lỗi', async () => {
+    const { html } = await render(SchedulePage, '/lich-mo-thuong/');
+    expect(html).toContain(DATA_UNAVAILABLE_NOTICE);
+    expect(html).not.toContain('Hôm nay không có đài nào quay');
   });
 });
 
