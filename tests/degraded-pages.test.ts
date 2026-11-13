@@ -242,6 +242,12 @@ describe('không có lỗi D1 → không 503, không banner', () => {
     expect(status).toBe(404);
   });
 
+  it('trang dò vé (GET): không gắn X-Robots-Tag noindex', async () => {
+    const { status, xRobotsTag } = await render(DoVeSoPage, '/do-ve-so/');
+    expect(status).toBe(200);
+    expect(xRobotsTag).toBe('');
+  });
+
   it('trang dò vé (POST body không phải form): 200, không 500', async () => {
     const { status, cacheControl, xRobotsTag } = await render(DoVeSoPage, '/do-ve-so/', {}, {
       method: 'POST',
