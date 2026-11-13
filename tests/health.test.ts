@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildHealthReport, daysBetween, type HealthRow } from '../src/lib/health';
+import { buildHealthReport, type HealthRow } from '../src/lib/health';
 
 function row(over: Partial<HealthRow> = {}): HealthRow {
   return {
@@ -32,6 +32,15 @@ describe('buildHealthReport', () => {
     expect(report.stale).toHaveLength(1);
   });
 
+  it('lag 0 và 2 ngày vẫn được coi là tươi', () => {
+    const report = buildHealthReport(
+      [row({ last_confirmed_date: '2026-11-13' }), row({ last_confirmed_date: '2026-11-11' })],
+      options,
+    );
+    expect(report.stations.map((station) => station.lag_days)).toEqual([0, 2]);
+    expect(report.stale).toHaveLength(0);
+  });
+
   it('chưa có bản xác nhận: lag_days null và nằm trong stale', () => {
     const report = buildHealthReport([row({ last_confirmed_date: null })], options);
     expect(report.stations[0]?.lag_days).toBeNull();
@@ -46,13 +55,5 @@ describe('buildHealthReport', () => {
     expect(report.publish_enabled).toBe(false);
     expect(report.stations[0]).toMatchObject({ pending: 3, disputed: 1 });
     expect(report).toMatchObject({ ok: true, today: '2026-11-13', checked_at: options.checkedAt });
-  });
-});
-
-describe('daysBetween', () => {
-  it('trả số âm khi ngày đích ở tương lai', () => {
-    expect(daysBetween('2026-11-18', '2026-11-13')).toBe(-5);
-    expect(daysBetween('2026-11-04', '2026-11-13')).toBe(9);
-    expect(daysBetween('2026-11-13', '2026-11-13')).toBe(0);
   });
 });

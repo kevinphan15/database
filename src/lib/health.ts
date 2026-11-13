@@ -9,7 +9,7 @@ export interface HealthRow {
   disputed: number;
 }
 
-export interface HealthOptions {
+interface HealthOptions {
   publishEnabled: boolean;
   /** Hôm nay theo giờ VN, YYYY-MM-DD. */
   today: string;
@@ -17,7 +17,7 @@ export interface HealthOptions {
 }
 
 /** Số ngày từ `from` đến `to` (âm nếu `from` ở tương lai). */
-export function daysBetween(from: string, to: string): number {
+function daysBetween(from: string, to: string): number {
   return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000);
 }
 
