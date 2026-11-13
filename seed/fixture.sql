@@ -1,4 +1,4 @@
--- 0002_seed.sql — dữ liệu MẪU (fixture) cho đài thí điểm Đồng Nai.
+-- fixture.sql — dữ liệu MẪU cho đài thí điểm Đồng Nai. Chỉ chạy ở local, không bao giờ lên D1 thật.
 -- Toàn bộ số dưới đây là GIẢ, dùng để kiểm thử render và các trạng thái kỳ.
 -- Đặc điểm cố ý: có số 0 ở đầu (09, 007, 0123, 001234), có kỳ thiếu giải,
 -- có ngày không có lịch quay (thứ Năm).
@@ -30,6 +30,11 @@ INSERT OR REPLACE INTO prize_rules (version, prize_code, label, ordinal, count, 
 
 INSERT OR REPLACE INTO sources (source_id, name, kind, is_authoritative, rights_note, owner)
 VALUES ('fixture-a', 'Nguồn mẫu (giả)', 'fixture', 0, 'Dữ liệu mẫu, không có giá trị thật', 'dev');
+
+-- Hai nguồn MẪU để kiểm thử luật A (authoritative / đối soát hash) ở local.
+INSERT OR REPLACE INTO sources (source_id, name, kind, is_authoritative, rights_note, owner)
+VALUES ('src-official', 'Nguồn chính thức (mẫu)', 'official', 1, 'Nguồn mẫu, không có giá trị thật', 'dev'),
+       ('src-backup', 'Nguồn dự phòng (mẫu)', 'scrape', 0, 'Nguồn mẫu, không có giá trị thật', 'dev');
 
 -- Đồng Nai quay thứ Tư (ISO 3). 2026-11-04 và 2026-11-11 là thứ Tư; 2026-11-12 là thứ Năm.
 INSERT OR REPLACE INTO schedule_rules

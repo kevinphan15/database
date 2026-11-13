@@ -11,7 +11,7 @@ code trước** khi deploy; phần còn lại là thao tác tài khoản Cloudfl
 | 0.2 | Tạo API token **scoped** cho CI: `Workers Scripts:Edit` + `D1:Edit`, giới hạn account | `npx wrangler whoami` từ CI |
 | 0.3 | Chốt lựa chọn domain: **custom domain** (cần zone trong account) hay `xoso-web.<account>.workers.dev` | Xem mục 4 |
 | 0.4 | ✅ `wrangler.jsonc` đã dọn: chỉ còn top-level, `database_id` chỉ có **một** chỗ | `grep -c "database_id" wrangler.jsonc` → `1` |
-| 0.5 | 🔧 Bỏ số liệu mẫu khỏi đường deploy: seed đã nằm ở `seed/0002_seed.sql`; còn phải thêm `migrations/0004_sources.sql` chứa nguồn thật | `ls migrations/` không có file seed |
+| 0.5 | 🔧 Seed đã tách sang `seed/fixture.sql`, `migrations/` sạch dữ liệu mẫu; còn phải thêm `migrations/0004_sources.sql` chứa nguồn thật | `grep -l "INSERT" migrations/*.sql` → không có |
 | 0.6 | 🔧 Đấu **công tắc index** vào code (xem mục 7.0) — hiện `indexEnabled` có trong `policy.ts` nhưng chưa nơi nào truyền | `grep -rn "indexEnabled" src` |
 
 ## 1. Tạo D1 thật và nạp schema
@@ -26,9 +26,9 @@ npx wrangler d1 execute xoso-db --remote --file=./migrations/0003_chang3.sql
 npx wrangler d1 execute xoso-db --remote --file=./migrations/0004_sources.sql
 ```
 
-**Không chạy `seed/0002_seed.sql` ở remote** — đó là dữ liệu GIẢ (`data_mode = fixture`), sẽ hiện
-banner "DỮ LIỆU MẪU" và số sai trên domain thật. File seed đã được đưa ra khỏi `migrations/` đúng vì
-lý do này; chỉ `migrations/` được phép chạy lên D1 thật.
+**Không chạy `seed/fixture.sql` ở remote** — đó là dữ liệu GIẢ (`data_mode = fixture`), sẽ hiện
+banner "DỮ LIỆU MẪU" và số sai trên domain thật. `migrations/` chỉ còn schema nên chạy remote là an
+toàn; mọi file seed phải nằm ngoài thư mục đó.
 
 Kiểm:
 
