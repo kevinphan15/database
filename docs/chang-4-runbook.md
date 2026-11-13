@@ -190,7 +190,9 @@ chứ không phải 200 rỗng: `/`, trang miền/đài/ngày, `/lich-mo-thuong/
 `Cache-Control: no-store`. Trang **404** (đường dẫn sai) cũng `no-store`, vì 404 nằm trong nhóm được
 phép cache theo heuristic (RFC 9111 §4.2.2) và sẽ dính lại trong cache trình duyệt sau khi URL có
 nội dung. Quy tắc chung: **không response lỗi nào được cache** — 503 báo sự cố, 404 báo đường dẫn
-sai, cả hai đều không có nội dung ổn định để tái dùng.
+sai, cả hai đều không có nội dung ổn định để tái dùng. Riêng `/do-ve-so/`, POST với body không phải
+form (JSON, rỗng) không thành 500: vẫn **503 + `no-store` khi D1 lỗi**, **200 + `no-store` khi D1
+khoẻ**; body hỏng nên bỏ qua cả rate limit — không truy vấn, không đối chiếu gì được thực thi.
 
 ## 6. Checklist sau deploy (chạy trên domain thật)
 
