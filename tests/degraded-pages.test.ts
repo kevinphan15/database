@@ -205,12 +205,15 @@ describe('404 không được cache theo heuristic', () => {
     expect(cacheControl).toBe('no-store');
   });
 
-  it('404 của trang miền: no-store', async () => {
-    const { status, cacheControl } = await render(RegionPage, '/xo-so-mien-nam/khong-co/', {
+  // Cùng một lần render với "không có lỗi D1": 404 thật phải no-store và không kèm banner 503.
+  it('404 của trang miền: no-store, không banner', async () => {
+    const { status, cacheControl, html } = await render(RegionPage, '/xo-so-mien-nam/khong-co/', {
       mien: 'khong-co',
     });
     expect(status).toBe(404);
     expect(cacheControl).toBe('no-store');
+    expect(html).toContain('Không tìm thấy miền');
+    expect(html).not.toContain(DATA_UNAVAILABLE_NOTICE);
   });
 
   it('404 của trang đài/ngày: no-store', async () => {
@@ -227,24 +230,6 @@ describe('404 không được cache theo heuristic', () => {
 describe('không có lỗi D1 → không 503, không banner', () => {
   beforeEach(() => {
     state.data = { dataset: EMPTY, source: 'd1', degraded: false };
-  });
-
-  it('miền không tồn tại vẫn 404 (503 chỉ dành cho lỗi D1)', async () => {
-    const { status, html } = await render(RegionPage, '/xo-so-mien-nam/khong-co/', {
-      mien: 'khong-co',
-    });
-    expect(status).toBe(404);
-    expect(html).toContain('Không tìm thấy miền');
-    expect(html).not.toContain(DATA_UNAVAILABLE_NOTICE);
-  });
-
-  it('ngày không có lịch quay vẫn 404', async () => {
-    const { status } = await render(
-      StationOrDatePage,
-      '/xo-so-mien-nam/dong-nai/2026-11-12/',
-      { mien: 'mien-nam', slug: '2026-11-12' },
-    );
-    expect(status).toBe(404);
   });
 
   it('trang dò vé (GET): không gắn X-Robots-Tag noindex', async () => {
