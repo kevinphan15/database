@@ -79,7 +79,7 @@ Site đặt `trailingSlash: 'always'` nên các URL trên **phải có `/` cuố
 
 Mã trả về của `result-observations`: `201` đã ghi · `200` trùng bản đã xác nhận/retry cùng key ·
 `400` thiếu `Idempotency-Key` · `401/403` sai token · `409` key dùng với payload khác hoặc ghi đồng thời ·
-`422` payload sai · `423` xuất bản đang tắt.
+`422` payload sai · `423` xuất bản đang tắt · `429` vượt 60 request/phút mỗi IP (kèm `Retry-After: 60`).
 
 Payload mẫu:
 

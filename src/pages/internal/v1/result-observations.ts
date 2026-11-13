@@ -3,10 +3,21 @@ import { jsonResponse, readJsonBody } from '../../../lib/http';
 import { parseObservation, requestHashOf } from '../../../lib/ingest';
 import { processObservation } from '../../../lib/ingest-store';
 import { guardInternal } from '../../../lib/internal-route';
+import { allowIngest } from '../../../lib/ratelimit';
 
 export const POST: APIRoute = async ({ request }) => {
   const guard = await guardInternal(request, 'ingest');
   if (!guard.ok) return guard.response;
+
+  // Chặn spam trước khi đọc/ghi D1; n8n chạy vài chục request/phút là thoải mái.
+  const ip = request.headers.get('CF-Connecting-IP') ?? 'unknown';
+  if (!(await allowIngest(`ingest:${ip}`))) {
+    return jsonResponse(
+      { ok: false, error: 'rate_limited', detail: 'Quá nhiều request; thử lại sau khoảng một phút.' },
+      429,
+      { 'retry-after': '60' },
+    );
+  }
 
   const idemKey = request.headers.get('idempotency-key')?.trim() ?? '';
   if (idemKey.length < 8 || idemKey.length > 128) {
