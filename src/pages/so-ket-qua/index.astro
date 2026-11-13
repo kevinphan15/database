@@ -16,6 +16,12 @@ const region = station ? dataset.regions.find((r) => r.code === station.region_c
 const draws = station ? drawsOfStation(dataset, station.station_code) : [];
 
 const decision = decideIndex({ kind: 'ledger', indexEnabled: dataset.index_enabled });
+
+if (degraded) {
+  // D1 lỗi truy vấn: 503 + không cache, như trang chủ và trang miền/đài/ngày.
+  Astro.response.status = 503;
+  Astro.response.headers.set('Cache-Control', 'no-store');
+}
 ---
 
 <Base

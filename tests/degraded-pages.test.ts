@@ -31,12 +31,14 @@ vi.mock('../src/lib/data', () => ({
 }));
 
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
-import { DATA_UNAVAILABLE_NOTICE, DATA_UNAVAILABLE_TITLE } from '../src/lib/degraded';
+import { DATA_UNAVAILABLE_EMPTY, DATA_UNAVAILABLE_NOTICE, DATA_UNAVAILABLE_TITLE } from '../src/lib/degraded';
 
 import NotFoundPage from '../src/pages/404.astro';
 import HomePage from '../src/pages/index.astro';
 import RegionPage from '../src/pages/xo-so-[mien]/index.astro';
 import SchedulePage from '../src/pages/lich-mo-thuong/index.astro';
+import LedgerPage from '../src/pages/so-ket-qua/index.astro';
+import StatsPage from '../src/pages/thong-ke/giai-dac-biet.astro';
 import StationOrDatePage from '../src/pages/xo-so-[mien]/[slug]/index.astro';
 import DatePage from '../src/pages/xo-so-[mien]/[dai]/[ngay]/index.astro';
 import { GET as resultsGET } from '../src/pages/api/v1/results';
@@ -78,11 +80,26 @@ describe('D1 lỗi truy vấn → banner giải thích', () => {
     expect(html).not.toContain('DỮ LIỆU MẪU');
   });
 
-  it('trang lịch mở thưởng: 200 + banner, không khẳng định sai "hôm nay không có đài"', async () => {
-    const { status, html } = await render(SchedulePage, '/lich-mo-thuong/');
-    expect(status).toBe(200);
+  it('trang lịch mở thưởng: 503, banner, không cache, không khẳng định sai "hôm nay không có đài"', async () => {
+    const { status, cacheControl, html } = await render(SchedulePage, '/lich-mo-thuong/');
+    expect(status).toBe(503);
+    expect(cacheControl).toBe('no-store');
     expect(html).toContain(DATA_UNAVAILABLE_NOTICE);
     expect(html).not.toContain('Hôm nay không có đài nào quay');
+  });
+
+  it('trang sổ kết quả: 503, không cache', async () => {
+    const { status, cacheControl, html } = await render(LedgerPage, '/so-ket-qua/');
+    expect(status).toBe(503);
+    expect(cacheControl).toBe('no-store');
+    expect(html).toContain(DATA_UNAVAILABLE_EMPTY);
+  });
+
+  it('trang thống kê giải đặc biệt: 503, không cache', async () => {
+    const { status, cacheControl, html } = await render(StatsPage, '/thong-ke/giai-dac-biet/');
+    expect(status).toBe(503);
+    expect(cacheControl).toBe('no-store');
+    expect(html).toContain(DATA_UNAVAILABLE_EMPTY);
   });
 });
 
@@ -180,6 +197,7 @@ describe('không có lỗi D1 → không 503, không banner', () => {
     );
     expect(status).toBe(404);
   });
+
 });
 
 describe('API báo lỗi D1 bằng degraded', () => {

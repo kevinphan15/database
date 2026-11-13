@@ -13,6 +13,12 @@ const stations = dataset.stations.filter((s) => s.status === 'active');
 const station = stations.find((s) => s.slug === selectedSlug) ?? stations[0] ?? null;
 const stat = station ? specialStats(dataset, station, 30) : null;
 const decision = decideIndex({ kind: 'stats', indexEnabled: dataset.index_enabled });
+
+if (degraded) {
+  // D1 lỗi truy vấn: 503 + không cache, như trang chủ và trang miền/đài/ngày.
+  Astro.response.status = 503;
+  Astro.response.headers.set('Cache-Control', 'no-store');
+}
 ---
 
 <Base
