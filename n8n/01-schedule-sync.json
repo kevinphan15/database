@@ -1,0 +1,67 @@
+{
+  "name": "Xổ số — 01 Đồng bộ lịch quay",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "0 6 * * *" }]
+        }
+      },
+      "id": "sched-1",
+      "name": "Mỗi ngày 06:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.XOSO_SCHEDULE_SOURCE_URL }}",
+        "options": { "timeout": 20000 }
+      },
+      "id": "fetch-1",
+      "name": "Lấy lịch từ nguồn",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [220, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Chuẩn hoá lịch quay: sai một dòng thì workflow dừng, không gửi lô nửa vời.\nconst items = $input.all();\nconst items0 = items[0]?.json ?? {};\nconst rules = Array.isArray(items0.rules) ? items0.rules : [];\nconst exceptions = Array.isArray(items0.exceptions) ? items0.exceptions : [];\nif (rules.length === 0 && exceptions.length === 0) {\n  throw new Error('Nguồn lịch rỗng: dừng để không xoá lịch đang có.');\n}\nconst payload = { rules, exceptions };\nreturn [{ json: { payload } }];"
+      },
+      "id": "code-1",
+      "name": "Chuẩn hoá payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.XOSO_BASE_URL }}/internal/v1/schedule-sync/\",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.XOSO_INGEST_TOKEN }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.payload) }}",
+        "options": { "timeout": 20000 }
+      },
+      "id": "post-1",
+      "name": "POST schedule-sync",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [660, 0]
+    }
+  ],
+  "connections": {
+    "Mỗi ngày 06:00": { "main": [[{ "node": "Lấy lịch từ nguồn", "type": "main", "index": 0 }]] },
+    "Lấy lịch từ nguồn": { "main": [[{ "node": "Chuẩn hoá payload", "type": "main", "index": 0 }]] },
+    "Chuẩn hoá payload": { "main": [[{ "node": "POST schedule-sync", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "pinData": {}
+}

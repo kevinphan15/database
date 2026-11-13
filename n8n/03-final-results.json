@@ -1,0 +1,94 @@
+{
+  "name": "Xổ số — 03 Kết quả chính thức",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "minutes", "minutesInterval": 5 }]
+        }
+      },
+      "id": "sched-3",
+      "name": "Mỗi 5 phút",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Chỉ lấy bản final sau khi kỳ đã quay xong (từ 16:35 giờ VN).\nconst now = new Date();\nconst vnMinutes = (now.getUTCHours() * 60 + now.getUTCMinutes() + 7 * 60) % (24 * 60);\nif (vnMinutes < 16 * 60 + 35) return [];\nreturn [{ json: { station_code: 'DONG_NAI', product_code: 'xs-mn' } }];"
+      },
+      "id": "gate-3",
+      "name": "Sau giờ quay?",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [220, 0]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.XOSO_FINAL_SOURCE_URL }}",
+        "options": { "timeout": 20000 }
+      },
+      "id": "fetch-3",
+      "name": "Lấy bảng giải final",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Nguồn authoritative: mỗi kỳ một request, Idempotency-Key cố định theo nội dung.\nconst src = $input.first().json;\nconst rows = Array.isArray(src.results) ? src.results : [src];\nconst out = [];\nfor (const row of rows) {\n  if (!row.draw_date) continue;\n  const prizes = {};\n  for (const [code, numbers] of Object.entries(row.prizes ?? {})) {\n    const list = (Array.isArray(numbers) ? numbers : [numbers])\n      .map((n) => String(n).trim())\n      .filter((n) => /^\\d{2,6}$/.test(n));\n    if (list.length > 0) prizes[code] = list;\n  }\n  if (Object.keys(prizes).length === 0) continue;\n  const observation = {\n    station_code: row.station_code ?? 'DONG_NAI',\n    product_code: row.product_code ?? 'xs-mn',\n    draw_date: row.draw_date,\n    kind: 'final',\n    source_id: 'src-official',\n    period_code: row.period_code ?? null,\n    prizes,\n    observed_at: new Date().toISOString(),\n    source_updated_at: row.updated_at ?? null,\n  };\n  const idem = `final:${observation.station_code}:${observation.product_code}:${observation.draw_date}:${JSON.stringify(prizes)}`.slice(0, 120);\n  out.push({ json: { observation, idem } });\n}\nreturn out;"
+      },
+      "id": "code-3",
+      "name": "Tạo observation final",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.XOSO_BASE_URL }}/internal/v1/result-observations/\",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.XOSO_INGEST_TOKEN }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Idempotency-Key", "value": "={{ $json.idem }}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.observation) }}",
+        "options": { "timeout": 20000, "response": { "response": { "neverError": true } } }
+      },
+      "id": "post-3",
+      "name": "POST result-observations",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [880, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Ghi log các trường hợp cần người xem: 409 (xung đột), 422 (payload sai), 423 (đang tắt xuất bản).\nconst rows = $input.all().map((item) => item.json);\nconst problems = rows.filter((row) => [409, 422, 423].includes(row.statusCode));\nif (problems.length === 0) return [];\nreturn problems.map((row) => ({ json: { statusCode: row.statusCode, body: row.body ?? row, at: new Date().toISOString() } }));"
+      },
+      "id": "code-3b",
+      "name": "Lọc phản hồi cần xử lý",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1100, 0]
+    }
+  ],
+  "connections": {
+    "Mỗi 5 phút": { "main": [[{ "node": "Sau giờ quay?", "type": "main", "index": 0 }]] },
+    "Sau giờ quay?": { "main": [[{ "node": "Lấy bảng giải final", "type": "main", "index": 0 }]] },
+    "Lấy bảng giải final": { "main": [[{ "node": "Tạo observation final", "type": "main", "index": 0 }]] },
+    "Tạo observation final": {
+      "main": [[{ "node": "POST result-observations", "type": "main", "index": 0 }]]
+    },
+    "POST result-observations": {
+      "main": [[{ "node": "Lọc phản hồi cần xử lý", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "pinData": {}
+}

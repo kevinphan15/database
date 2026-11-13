@@ -1,6 +1,6 @@
 # Kế hoạch tổng thể — Website kết quả xổ số
 
-**Phiên bản:** 3.1 · **Ngày:** 12/11/2026 · **Trạng thái:** đã duyệt, xong chặng 1–2, tiếp theo chặng 3
+**Phiên bản:** 3.2 · **Ngày:** 12/11/2026 · **Trạng thái:** đã duyệt, xong chặng 1–3, tiếp theo chặng 4
 
 ## 1. Quyết định đã chốt
 
@@ -129,5 +129,6 @@ Chọn TTL thay vì purge: đính chính lan trong ≤ TTL.
 ## 10. Còn treo
 
 1. Tên subdomain cụ thể (chặng 4).
-2. Danh sách nguồn cào + nguồn nào là authoritative (chặng 3).
+2. Danh sách nguồn cào + nguồn nào là authoritative: chặng 3 đã dựng luật và nguồn MẪU
+   (`src-official` authoritative, `src-backup` thường) để kiểm thử; nguồn thật vẫn phải chốt.
 3. Bật 2FA Cloudflare (trước chặng 4).

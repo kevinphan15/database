@@ -1,0 +1,66 @@
+{
+  "name": "Xổ số — 04 Giám sát độ trễ",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "0 */2 * * *" }]
+        }
+      },
+      "id": "sched-4",
+      "name": "Mỗi 2 giờ",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.XOSO_BASE_URL }}/internal/v1/health/\",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.XOSO_OPERATOR_TOKEN }}" }
+          ]
+        },
+        "options": { "timeout": 15000 }
+      },
+      "id": "fetch-4",
+      "name": "GET health",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [220, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Cảnh báo khi xuất bản bị tắt, có kỳ disputed, hoặc dữ liệu trễ > 2 ngày.\nconst health = $input.first().json;\nconst alerts = [];\nif (health.publish_enabled === false) {\n  alerts.push('publish_enabled = 0: website đang ngừng nhận dữ liệu mới.');\n}\nfor (const row of health.stale ?? []) {\n  alerts.push(`Đài ${row.name} trễ ${row.lag_days === null ? 'chưa có bản xác nhận' : row.lag_days + ' ngày'}.`);\n}\nfor (const row of health.stations ?? []) {\n  if (row.disputed > 0) alerts.push(`Đài ${row.name} có ${row.disputed} kỳ disputed.`);\n  if (row.pending > 0) alerts.push(`Đài ${row.name} có ${row.pending} kỳ chưa đối soát.`);\n}\nif (alerts.length === 0) return [];\nreturn [{ json: { text: `[xoso] ${alerts.join(' | ')}`, checked_at: health.checked_at } }];"
+      },
+      "id": "code-4",
+      "name": "Tạo cảnh báo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.XOSO_ALERT_WEBHOOK_URL }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ text: $json.text }) }}",
+        "options": { "timeout": 10000 }
+      },
+      "id": "alert-4",
+      "name": "Gửi cảnh báo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [660, 0]
+    }
+  ],
+  "connections": {
+    "Mỗi 2 giờ": { "main": [[{ "node": "GET health", "type": "main", "index": 0 }]] },
+    "GET health": { "main": [[{ "node": "Tạo cảnh báo", "type": "main", "index": 0 }]] },
+    "Tạo cảnh báo": { "main": [[{ "node": "Gửi cảnh báo", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "pinData": {}
+}

@@ -18,8 +18,9 @@ Khi chưa có binding D1, website tự dùng fixture (`src/data/fixture.json`) v
 ## D1 local
 
 ```bash
-npm run db:local:init   # tạo schema (migrations/0001_init.sql)
-npm run db:local:seed   # dữ liệu mẫu (migrations/0002_seed.sql)
+npm run db:local:init     # tạo schema (migrations/0001_init.sql)
+npm run db:local:seed     # dữ liệu mẫu (migrations/0002_seed.sql)
+npm run db:local:migrate  # chỉ mục + nguồn authoritative mẫu (migrations/0003_chang3.sql)
 ```
 
 Sau khi seed, `wrangler dev`/`astro dev` có binding `DB` sẽ đọc dữ liệu từ D1 local thay vì fixture.
@@ -29,12 +30,15 @@ Sau khi seed, `wrangler dev`/`astro dev` có binding `DB` sẽ đọc dữ liệ
 ```
 src/pages/       trang SSR: chủ, miền, đài, ngày, sổ kết quả, thống kê, dò vé, hướng dẫn,
                  sitemap.xml, robots.txt, 404
+src/pages/internal/v1/  API cho n8n (observations, schedule-sync, publish-mode, health)
 src/components/  PrizeTable, StatusBadge, ScheduleTable, DateBody, StationBody
 src/content/     bài hướng dẫn (content collection `guides`)
 src/layouts/     Base.astro (canonical + meta robots)
 src/lib/         time (giờ VN), format, policy (index), selectors, queries (D1), fixture,
-                 ticket (dò vé), stats, sitemap, redirects, ratelimit
-migrations/      schema + seed
+                 ticket (dò vé), stats, sitemap, redirects, ratelimit, ingest (luật A),
+                 ingest-store (ghi D1), auth, schedule-sync, http, env
+n8n/             4 workflow JSON + hướng dẫn import
+migrations/      schema, seed, 0003 (chỉ mục + nguồn authoritative mẫu cho kiểm thử)
 tests/           vitest
 docs/plan.md     kế hoạch tổng thể
 ```
@@ -57,5 +61,50 @@ docs/plan.md     kế hoạch tổng thể
 
 `/do-ve-so/` dùng POST nên không sinh URL kết quả; tham số lọc bị chặn trong `robots.txt` bằng
 wildcard (`?dai=`, `?page=`, `?tu-ngay=`, …).
-- ⏳ Chặng 3: ingest + luật xác nhận tự động + workflow n8n
+
+## API nội bộ cho n8n
+
+Tất cả dưới `/internal/v1/`, yêu cầu `Authorization: Bearer <token>`, trả JSON `no-store` +
+`X-Robots-Tag: noindex`, và bị chặn crawl bằng `Disallow: /internal/`.
+
+| Endpoint | Quyền | Mô tả |
+|---|---|---|
+| `POST /internal/v1/result-observations/` | ingest | Nhận một observation (`kind: live\|final`), bắt buộc header `Idempotency-Key` (8..128 ký tự) |
+| `POST /internal/v1/schedule-sync/` | ingest | Đồng bộ lịch quay theo lô `{rules, exceptions}`, kiểm tra cả lô trước khi ghi |
+| `POST /internal/v1/publish-mode/` | operator | `{publish_enabled: true\|false}` — tắt là ingest bị từ chối (423) |
+| `GET /internal/v1/health/` | operator | Độ trễ dữ liệu theo đài, số kỳ pending/disputed, trạng thái xuất bản |
+
+Site đặt `trailingSlash: 'always'` nên các URL trên **phải có `/` cuối** (thiếu slash → `308`).
+
+Mã trả về của `result-observations`: `201` đã ghi · `200` trùng bản đã xác nhận/retry cùng key ·
+`400` thiếu `Idempotency-Key` · `401/403` sai token · `409` key dùng với payload khác hoặc ghi đồng thời ·
+`422` payload sai · `423` xuất bản đang tắt.
+
+Payload mẫu:
+
+```json
+{
+  "station_code": "DONG_NAI",
+  "product_code": "xs-mn",
+  "draw_date": "2026-11-18",
+  "kind": "final",
+  "source_id": "src-official",
+  "prizes": { "special": ["001234"], "seventh": ["007"] },
+  "observed_at": "2026-11-18T09:45:00Z"
+}
+```
+
+Luật A: nguồn `is_authoritative = 1` → xác nhận ngay; hai nguồn thường trùng `content_hash` →
+`auto:dual-source`; một nguồn thường → `pending_confirmation` (hiện số, dò vé từ chối); hai bản final
+khác hash → `disputed` (giữ bản cũ); bản final mới khác hash từ nguồn authoritative → revision
+`is_correction = 1`; `live` đến sau bản final không hạ trạng thái.
+
+Chuẩn bị secret trên Worker (không đặt trong file):
+
+```bash
+npx wrangler secret put INGEST_TOKEN    # token cho n8n
+npx wrangler secret put OPERATOR_TOKEN  # token vận hành
+```
+- ✅ Chặng 3: API `/internal/v1/*` (observations, schedule-sync, publish-mode, health), idempotency,
+  luật xác nhận A, 4 workflow n8n (chưa chạy trên n8n thật — xem `n8n/README.md`)
 - ⏳ Chặng 4: tạo D1 thật, subdomain, Workers Builds, deploy tối, bật index

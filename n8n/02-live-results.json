@@ -1,0 +1,81 @@
+{
+  "name": "Xổ số — 02 Kết quả trực tiếp",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "minutes", "minutesInterval": 3 }]
+        }
+      },
+      "id": "sched-2",
+      "name": "Mỗi 3 phút",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Chỉ chạy trong khung quay 16:00–17:00 (Asia/Ho_Chi_Minh).\nconst now = new Date();\nconst vnMinutes = (now.getUTCHours() * 60 + now.getUTCMinutes() + 7 * 60) % (24 * 60);\nconst inWindow = vnMinutes >= 16 * 60 && vnMinutes <= 17 * 60 + 10;\nif (!inWindow) return [];\nreturn [{ json: { station_code: 'DONG_NAI', product_code: 'xs-mn' } }];"
+      },
+      "id": "gate-2",
+      "name": "Trong khung quay?",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [220, 0]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.XOSO_LIVE_SOURCE_URL }}?station={{ $json.station_code }}",
+        "options": { "timeout": 15000 }
+      },
+      "id": "fetch-2",
+      "name": "Lấy số đang về",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Đổi HTML/JSON của nguồn thành observation. Số PHẢI là chuỗi để giữ 0 ở đầu.\nconst src = $input.first().json;\nconst station_code = 'DONG_NAI';\nconst product_code = 'xs-mn';\nconst draw_date = src.draw_date;\nif (!draw_date) throw new Error('Thiếu draw_date từ nguồn.');\nconst prizes = {};\nfor (const [code, numbers] of Object.entries(src.prizes ?? {})) {\n  const list = (Array.isArray(numbers) ? numbers : [numbers])\n    .map((n) => String(n).trim())\n    .filter((n) => /^\\d{2,6}$/.test(n));\n  if (list.length > 0) prizes[code] = list;\n}\nif (Object.keys(prizes).length === 0) return [];\nconst observed_at = new Date().toISOString();\nconst idem = `live:${station_code}:${product_code}:${draw_date}:${JSON.stringify(prizes)}`.slice(0, 120);\nreturn [{ json: { observation: { station_code, product_code, draw_date, kind: 'live', source_id: 'src-live', prizes, observed_at }, idem } }];"
+      },
+      "id": "code-2",
+      "name": "Tạo observation live",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.XOSO_BASE_URL }}/internal/v1/result-observations/\",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.XOSO_INGEST_TOKEN }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Idempotency-Key", "value": "={{ $json.idem }}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.observation) }}",
+        "options": { "timeout": 15000 }
+      },
+      "id": "post-2",
+      "name": "POST result-observations",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [880, 0]
+    }
+  ],
+  "connections": {
+    "Mỗi 3 phút": { "main": [[{ "node": "Trong khung quay?", "type": "main", "index": 0 }]] },
+    "Trong khung quay?": { "main": [[{ "node": "Lấy số đang về", "type": "main", "index": 0 }]] },
+    "Lấy số đang về": { "main": [[{ "node": "Tạo observation live", "type": "main", "index": 0 }]] },
+    "Tạo observation live": {
+      "main": [[{ "node": "POST result-observations", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "pinData": {}
+}
