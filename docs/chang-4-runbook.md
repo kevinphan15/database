@@ -88,6 +88,12 @@ Kỳ vọng: đủ 15 bảng; **đúng 2 nguồn** (`src-official` authoritative
 | `/api/v1/results/`, `/api/v1/schedule/` | 200, `count: 0`, `source: "d1"` |
 | `/robots.txt` | 200, luật bình thường — hoặc `Disallow: /` nếu index đang tắt |
 
+**Khi D1 lỗi truy vấn** (khác với rỗng — ví dụ thiếu bảng, D1 hỏng): mọi trang có banner
+“Tạm thời chưa tải được dữ liệu kết quả…”; trang miền/đài/ngày trả **503** kèm câu “đây không phải
+lỗi đường dẫn”, không trả 404 (404 cho URL đúng sẽ khiến công cụ tìm kiếm và uptime check hiểu sai);
+các trang nội dung 200 với câu giải thích riêng thay vì “hôm nay không có đài nào quay”; API trả
+`"degraded": true` + `notice`. Đo bằng Worker trỏ vào D1 chưa có bảng nào.
+
 Quy tắc đằng sau: **có binding D1 thì không bao giờ rơi về fixture**, kể cả khi D1 rỗng hoặc lỗi truy
 vấn — thà trang trống còn hơn hiện số giả trên domain thật. Fixture chỉ xuất hiện khi chạy
 `astro dev`/`wrangler dev` **không có** binding `DB`. Sitemap vì thế cũng không bao giờ chứa URL

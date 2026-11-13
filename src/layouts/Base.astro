@@ -11,11 +11,10 @@ interface Props {
    * (dùng cho trang 404, vì canonical trỏ về chính URL sai là tín hiệu nhiễu).
    */
   canonicalPath?: string | null;
-  dataSource?: 'd1' | 'fixture';
   notice?: string | null;
 }
 
-const { title, description, decision, canonicalPath, dataSource, notice } = Astro.props;
+const { title, description, decision, canonicalPath, notice } = Astro.props;
 const canonical =
   canonicalPath === null
     ? null
@@ -49,7 +48,8 @@ const isCurrent = (path: string) => currentPath === path || currentPath.startsWi
       </div>
     </header>
 
-    {dataSource === 'fixture' && notice && <p class="fixture-banner" role="status">{notice}</p>}
+    {/* Banner cho dữ liệu mẫu VÀ cho lúc D1 lỗi truy vấn — không để trang trống không giải thích. */}
+    {notice && <p class="fixture-banner" role="status">{notice}</p>}
 
     <main id="main">
       <slot />

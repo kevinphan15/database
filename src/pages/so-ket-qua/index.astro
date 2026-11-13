@@ -3,10 +3,11 @@ import Base from '../../layouts/Base.astro';
 import StatusBadge from '../../components/StatusBadge.astro';
 import { loadDataset } from '../../lib/data';
 import { decideIndex } from '../../lib/policy';
+import { DATA_UNAVAILABLE_EMPTY } from '../../lib/degraded';
 import { drawsOfStation } from '../../lib/selectors';
 import { formatVNDate, formatVNDateLong, todayInVN } from '../../lib/time';
 
-const { dataset, source } = await loadDataset();
+const { dataset, degraded } = await loadDataset();
 const today = todayInVN();
 const selectedSlug = Astro.url.searchParams.get('dai') ?? '';
 const stations = dataset.stations.filter((s) => s.status === 'active');
@@ -26,7 +27,6 @@ const decision = decideIndex({ kind: 'ledger', indexEnabled: dataset.index_enabl
   }
   decision={decision}
   canonicalPath="/so-ket-qua/"
-  dataSource={source}
   notice={dataset.notice}
 >
   <h1>Sổ kết quả</h1>
@@ -94,7 +94,9 @@ const decision = decideIndex({ kind: 'ledger', indexEnabled: dataset.index_enabl
         </p>
       </section>
     ) : (
-      <p class="card meta">Chưa có đài nào trong dữ liệu.</p>
+      <p class="card meta">
+        {degraded ? DATA_UNAVAILABLE_EMPTY : 'Chưa có đài nào trong dữ liệu.'}
+      </p>
     )
   }
 </Base>

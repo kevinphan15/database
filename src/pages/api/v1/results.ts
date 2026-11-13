@@ -4,7 +4,7 @@ import { jsonResponse } from '../../../lib/http';
 import { resultsPayload } from '../../../lib/public-api';
 
 export const GET: APIRoute = async ({ url }) => {
-  const { dataset, source } = await loadDataset();
+  const { dataset, source, degraded } = await loadDataset();
   const reply = resultsPayload(dataset, {
     station: url.searchParams.get('dai'),
     date: url.searchParams.get('ngay'),
@@ -12,7 +12,7 @@ export const GET: APIRoute = async ({ url }) => {
   });
 
   return jsonResponse(
-    { ...reply.body, source, notice: dataset.notice || null },
+    { ...reply.body, source, degraded, notice: dataset.notice || null },
     reply.status,
     { 'cache-control': 'no-store' },
   );

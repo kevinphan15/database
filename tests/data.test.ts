@@ -40,16 +40,18 @@ describe('loadDataset', () => {
   });
 
   it('không có binding D1 → fixture có nhãn dữ liệu mẫu', async () => {
-    const { dataset, source } = await loadDataset();
+    const { dataset, source, degraded } = await loadDataset();
     expect(source).toBe('fixture');
+    expect(degraded).toBe(false);
     expect(dataset.is_fixture).toBe(true);
     expect(dataset.stations.length).toBeGreaterThan(0);
   });
 
   it('D1 rỗng (đã migrate, chưa có dữ liệu) → dataset rỗng, không lộ fixture', async () => {
     state.db = makeD1();
-    const { dataset, source } = await loadDataset();
+    const { dataset, source, degraded } = await loadDataset();
     expect(source).toBe('d1');
+    expect(degraded).toBe(false);
     expect(dataset.is_fixture).toBe(false);
     expect(dataset.notice).toBe('');
     expect(dataset.stations).toEqual([]);
@@ -59,10 +61,14 @@ describe('loadDataset', () => {
     expect(dataset.index_enabled).toBe(true);
   });
 
-  it('D1 lỗi → dataset rỗng, không rơi về dữ liệu mẫu', async () => {
+  it('D1 lỗi truy vấn → dataset rỗng, báo lỗi tạm thời, không rơi về dữ liệu mẫu', async () => {
     state.db = makeD1({ failOn: 'FROM stations' });
-    const { dataset } = await loadDataset();
+    const { dataset, source, degraded } = await loadDataset();
+    expect(source).toBe('d1');
+    expect(degraded).toBe(true);
     expect(dataset.is_fixture).toBe(false);
     expect(dataset.stations).toEqual([]);
+    // Có thông báo cho người đọc thay vì trang trống không giải thích.
+    expect(dataset.notice).toContain('chưa tải được dữ liệu');
   });
 });

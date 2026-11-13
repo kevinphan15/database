@@ -1,9 +1,15 @@
 ---
 import Base from '../../../layouts/Base.astro';
+import DataUnavailable from '../../../components/DataUnavailable.astro';
 import StationBody from '../../../components/StationBody.astro';
 import DateBody from '../../../components/DateBody.astro';
 import { loadDataset } from '../../../lib/data';
 import { decideIndex } from '../../../lib/policy';
+import {
+  DATA_UNAVAILABLE_DECISION,
+  DATA_UNAVAILABLE_DESCRIPTION,
+  DATA_UNAVAILABLE_TITLE,
+} from '../../../lib/degraded';
 import {
   nearestDrawDate,
   regionBySlug,
@@ -14,7 +20,7 @@ import { formatVNDate, isISODate, todayInVN } from '../../../lib/time';
 import type { Draw, Station } from '../../../lib/types';
 
 const { mien, slug } = Astro.params;
-const { dataset, source } = await loadDataset();
+const { dataset, degraded } = await loadDataset();
 const today = todayInVN();
 const region = regionBySlug(dataset, mien ?? '');
 const isDateSegment = isISODate(slug ?? '');
@@ -28,50 +34,57 @@ let prevDate: string | null = null;
 let nextDate: string | null = null;
 let notFound = false;
 
-if (!region) {
-  notFound = true;
-} else if (isDateSegment) {
-  const date = slug as string;
-  dateStations = stationsDrawingOn(dataset, date, region.code).map(({ station: s, draw }) => ({
-    station: s,
-    draw,
-  }));
-
-  // Đài có kỳ nhưng không nằm trong lịch tuần (ngoại lệ/đổi lịch) vẫn phải hiện.
-  for (const draw of dataset.draws.filter((d) => d.draw_date === date)) {
-    if (dateStations.some((item) => item.station.station_code === draw.station_code)) continue;
-    const match = dataset.stations.find(
-      (s) => s.station_code === draw.station_code && s.region_code === region.code,
-    );
-    if (match) dateStations.push({ station: match, draw });
-  }
-
-  if (dateStations.length === 0) {
-    // Ngày không có lịch quay → 404 (không tạo trang rỗng).
+if (!degraded) {
+  if (!region) {
     notFound = true;
+  } else if (isDateSegment) {
+    const date = slug as string;
+    dateStations = stationsDrawingOn(dataset, date, region.code).map(({ station: s, draw }) => ({
+      station: s,
+      draw,
+    }));
+
+    // Đài có kỳ nhưng không nằm trong lịch tuần (ngoại lệ/đổi lịch) vẫn phải hiện.
+    for (const draw of dataset.draws.filter((d) => d.draw_date === date)) {
+      if (dateStations.some((item) => item.station.station_code === draw.station_code)) continue;
+      const match = dataset.stations.find(
+        (s) => s.station_code === draw.station_code && s.region_code === region.code,
+      );
+      if (match) dateStations.push({ station: match, draw });
+    }
+
+    if (dateStations.length === 0) {
+      // Ngày không có lịch quay → 404 (không tạo trang rỗng).
+      notFound = true;
+    } else {
+      prevDate = nearestDrawDate(dataset, date, -1, { regionCode: region.code });
+      nextDate = nearestDrawDate(dataset, date, 1, { regionCode: region.code });
+    }
   } else {
-    prevDate = nearestDrawDate(dataset, date, -1, { regionCode: region.code });
-    nextDate = nearestDrawDate(dataset, date, 1, { regionCode: region.code });
-  }
-} else {
-  const found = stationByPath(dataset, mien ?? '', slug ?? '');
-  if (!found) {
-    notFound = true;
-  } else {
-    station = found.station;
+    const found = stationByPath(dataset, mien ?? '', slug ?? '');
+    if (!found) {
+      notFound = true;
+    } else {
+      station = found.station;
+    }
   }
 }
 
-if (notFound) Astro.response.status = 404;
+if (degraded) Astro.response.status = 503;
+else if (notFound) Astro.response.status = 404;
 
 const hasPrizes = dateStations.some(({ draw }) => draw && Object.keys(draw.prizes).length > 0);
-const decision = decideIndex({
-  kind: isDateSegment ? 'date' : 'station',
-  hasPrizes,
-  indexEnabled: dataset.index_enabled,
-});
+const decision = degraded
+  ? DATA_UNAVAILABLE_DECISION
+  : decideIndex({
+      kind: isDateSegment ? 'date' : 'station',
+      hasPrizes,
+      indexEnabled: dataset.index_enabled,
+    });
 
-const title = notFound
+const title = degraded
+  ? DATA_UNAVAILABLE_TITLE
+  : notFound
   ? 'Không tìm thấy trang'
   : isDateSegment && region
     ? `Kết quả xổ số ${region.name} ngày ${formatVNDate(slug ?? '')}`
@@ -79,7 +92,9 @@ const title = notFound
       ? `Kết quả xổ số ${station.name}`
       : 'Kết quả xổ số';
 
-const description = notFound
+const description = degraded
+  ? DATA_UNAVAILABLE_DESCRIPTION
+  : notFound
   ? 'Đường dẫn không hợp lệ.'
   : isDateSegment && region
     ? `Kết quả xổ số ${region.name} ngày ${formatVNDate(slug ?? '')}: các đài có lịch quay, trạng thái từng kỳ và bảng giải.`
@@ -92,12 +107,13 @@ const description = notFound
   title={title}
   description={description}
   decision={decision}
-  canonicalPath={notFound ? null : undefined}
-  dataSource={source}
+  canonicalPath={notFound || degraded ? null : undefined}
   notice={dataset.notice}
 >
   {
-    notFound || !region ? (
+    degraded ? (
+      <DataUnavailable />
+    ) : notFound || !region ? (
       <>
         <h1>Không tìm thấy trang</h1>
         <p class="lede">

@@ -1,5 +1,6 @@
 ---
 import Base from '../../layouts/Base.astro';
+import DataUnavailable from '../../components/DataUnavailable.astro';
 import PrizeTable from '../../components/PrizeTable.astro';
 import ScheduleTable from '../../components/ScheduleTable.astro';
 import StatusBadge from '../../components/StatusBadge.astro';
@@ -7,35 +8,48 @@ import { loadDataset } from '../../lib/data';
 import { latestPerStation, regionBySlug, rulesFor, stationsDrawingOn } from '../../lib/selectors';
 import { formatVNDate, formatVNTimeFromISO, todayInVN } from '../../lib/time';
 import { decideIndex } from '../../lib/policy';
+import {
+  DATA_UNAVAILABLE_DECISION,
+  DATA_UNAVAILABLE_DESCRIPTION,
+  DATA_UNAVAILABLE_TITLE,
+} from '../../lib/degraded';
 
 const { mien } = Astro.params;
-const { dataset, source } = await loadDataset();
+const { dataset, degraded } = await loadDataset();
 const today = todayInVN();
 const region = regionBySlug(dataset, mien ?? '');
 
-if (!region) {
+if (degraded) {
+  // D1 lỗi truy vấn: URL vẫn hợp lệ, chỉ dữ liệu không đọc được → 503, không phải 404.
+  Astro.response.status = 503;
+} else if (!region) {
   Astro.response.status = 404;
 }
 
 const stations = region ? latestPerStation(dataset, region.code) : [];
 const drawingToday = region ? stationsDrawingOn(dataset, today, region.code) : [];
-const decision = decideIndex({ kind: 'region', indexEnabled: dataset.index_enabled });
+const decision = degraded
+  ? DATA_UNAVAILABLE_DECISION
+  : decideIndex({ kind: 'region', indexEnabled: dataset.index_enabled });
 ---
 
 <Base
-  title={region ? `Kết quả xổ số ${region.name}` : 'Không tìm thấy miền'}
+  title={degraded ? DATA_UNAVAILABLE_TITLE : region ? `Kết quả xổ số ${region.name}` : 'Không tìm thấy miền'}
   description={
-    region
-      ? `Kết quả xổ số ${region.name} theo từng đài, kèm lịch quay và trạng thái kỳ gần nhất.`
-      : 'Đường dẫn không hợp lệ.'
+    degraded
+      ? DATA_UNAVAILABLE_DESCRIPTION
+      : region
+        ? `Kết quả xổ số ${region.name} theo từng đài, kèm lịch quay và trạng thái kỳ gần nhất.`
+        : 'Đường dẫn không hợp lệ.'
   }
   decision={decision}
   canonicalPath={region ? undefined : null}
-  dataSource={source}
   notice={dataset.notice}
 >
   {
-    region ? (
+    degraded ? (
+      <DataUnavailable />
+    ) : region ? (
       <>
         <h1>Kết quả xổ số {region.name}</h1>
         <p class="lede">

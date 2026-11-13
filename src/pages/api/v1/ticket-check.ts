@@ -12,8 +12,10 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
   const body = await readJsonBody(request);
   if (!body.ok) return body.response;
 
-  const { dataset, source } = await loadDataset();
+  const { dataset, source, degraded } = await loadDataset();
   const reply = ticketCheckPayload(dataset, body.value);
 
-  return jsonResponse({ ...reply.body, source }, reply.status, { 'cache-control': 'no-store' });
+  return jsonResponse({ ...reply.body, source, degraded }, reply.status, {
+    'cache-control': 'no-store',
+  });
 };

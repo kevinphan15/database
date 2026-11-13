@@ -5,6 +5,7 @@
  * - Không có binding D1 (dev thuần): dùng fixture và hiển thị nhãn "dữ liệu mẫu".
  */
 
+import { DATA_UNAVAILABLE_NOTICE } from './degraded';
 import { fixtureDataset } from './fixture';
 import { loadFromD1 } from './queries';
 import { readFlags } from './settings';
@@ -13,6 +14,8 @@ import type { Dataset, DataSource } from './types';
 export interface LoadedData {
   dataset: Dataset;
   source: DataSource;
+  /** D1 lỗi truy vấn (không phải rỗng): trang phải báo lỗi tạm thời, không được giả vờ “chưa có dữ liệu”. */
+  degraded: boolean;
 }
 
 let cached: LoadedData | null = null;
@@ -32,7 +35,11 @@ export async function loadDataset(): Promise<LoadedData> {
 
   // Công tắc index đọc lại mỗi request (một khoá chính) thay vì theo cache của isolate,
   // để tắt index có hiệu lực ngay.
-  return { source: base.source, dataset: { ...base.dataset, index_enabled: await readIndexEnabled(db) } };
+  return {
+    source: base.source,
+    degraded: base.degraded,
+    dataset: { ...base.dataset, index_enabled: await readIndexEnabled(db) },
+  };
 }
 
 async function readIndexEnabled(db: D1Database | null): Promise<boolean> {
@@ -45,35 +52,37 @@ async function readIndexEnabled(db: D1Database | null): Promise<boolean> {
   }
 }
 
-function emptyDataset(): Dataset {
-  return {
-    notice: '',
-    is_fixture: false,
-    index_enabled: true,
-    product_code: 'xs-mn',
-    prize_rule_version: 1,
-    regions: [],
-    stations: [],
-    prize_rules: [],
-    schedule: [],
-    exceptions: [],
-    draws: [],
-  };
-}
+const EMPTY_DATASET: Dataset = {
+  notice: '',
+  is_fixture: false,
+  index_enabled: true,
+  product_code: 'xs-mn',
+  prize_rule_version: 1,
+  regions: [],
+  stations: [],
+  prize_rules: [],
+  schedule: [],
+  exceptions: [],
+  draws: [],
+};
 
 async function loadBase(db: D1Database | null): Promise<LoadedData> {
   if (cached) return cached;
 
   if (!db) {
-    cached = { dataset: fixtureDataset, source: 'fixture' };
+    cached = { dataset: fixtureDataset, source: 'fixture', degraded: false };
     return cached;
   }
 
   try {
-    cached = { dataset: await loadFromD1(db), source: 'd1' };
+    cached = { dataset: await loadFromD1(db), source: 'd1', degraded: false };
   } catch (error) {
     console.error('[data] không đọc được D1, trả trang rỗng thay vì dữ liệu mẫu:', error);
-    cached = { dataset: emptyDataset(), source: 'd1' };
+    cached = {
+      dataset: { ...EMPTY_DATASET, notice: DATA_UNAVAILABLE_NOTICE },
+      source: 'd1',
+      degraded: true,
+    };
   }
   return cached;
 }

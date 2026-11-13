@@ -1,19 +1,25 @@
 ---
 import Base from '../../../../layouts/Base.astro';
+import DataUnavailable from '../../../../components/DataUnavailable.astro';
 import DateBody from '../../../../components/DateBody.astro';
 import { loadDataset } from '../../../../lib/data';
 import { decideIndex } from '../../../../lib/policy';
 import { drawOnDate, isDrawDay, nearestDrawDate, stationByPath } from '../../../../lib/selectors';
 import { formatVNDate, isISODate } from '../../../../lib/time';
+import {
+  DATA_UNAVAILABLE_DECISION,
+  DATA_UNAVAILABLE_DESCRIPTION,
+  DATA_UNAVAILABLE_TITLE,
+} from '../../../../lib/degraded';
 
 const { mien, dai, ngay } = Astro.params;
-const { dataset, source } = await loadDataset();
+const { dataset, degraded } = await loadDataset();
 const found = stationByPath(dataset, mien ?? '', dai ?? '');
 const date = ngay ?? '';
 const dateOk = isISODate(date);
 
 let notFound = false;
-if (!found || !dateOk) {
+if (!degraded && (!found || !dateOk)) {
   notFound = true;
 }
 
@@ -24,15 +30,20 @@ if (!notFound && found && dateOk && !draw && !isDrawDay(dataset, found.station.s
   notFound = true;
 }
 
-if (notFound) Astro.response.status = 404;
+if (degraded) Astro.response.status = 503;
+else if (notFound) Astro.response.status = 404;
 
 const hasPrizes = draw ? Object.keys(draw.prizes).length > 0 : false;
-const decision = decideIndex({ kind: 'date', hasPrizes, indexEnabled: dataset.index_enabled });
+const decision = degraded
+  ? DATA_UNAVAILABLE_DECISION
+  : decideIndex({ kind: 'date', hasPrizes, indexEnabled: dataset.index_enabled });
 const prevDate = found && dateOk ? nearestDrawDate(dataset, date, -1, { stationCode: found.station.station_code }) : null;
 const nextDate = found && dateOk ? nearestDrawDate(dataset, date, 1, { stationCode: found.station.station_code }) : null;
 
 const title =
-  notFound || !found
+  degraded
+    ? DATA_UNAVAILABLE_TITLE
+    : notFound || !found
     ? 'Không tìm thấy trang'
     : `Kết quả xổ số ${found.station.name} ngày ${formatVNDate(date)}`;
 ---
@@ -40,17 +51,20 @@ const title =
 <Base
   title={title}
   description={
-    notFound || !found
+    degraded
+      ? DATA_UNAVAILABLE_DESCRIPTION
+      : notFound || !found
       ? 'Đường dẫn không hợp lệ.'
       : `Kết quả xổ số ${found.station.name} ngày ${formatVNDate(date)}: bảng giải, trạng thái kỳ và điều hướng kỳ trước/sau.`
   }
   decision={decision}
-  canonicalPath={notFound ? null : undefined}
-  dataSource={source}
+  canonicalPath={notFound || degraded ? null : undefined}
   notice={dataset.notice}
 >
   {
-    notFound || !found ? (
+    degraded ? (
+      <DataUnavailable />
+    ) : notFound || !found ? (
       <>
         <h1>Không tìm thấy trang</h1>
         <p class="lede">

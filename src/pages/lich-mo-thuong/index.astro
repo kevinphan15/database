@@ -5,8 +5,9 @@ import { loadDataset } from '../../lib/data';
 import { scheduleOfStation, stationsDrawingOn, stationsOfRegion } from '../../lib/selectors';
 import { addDays, formatVNDate, formatVNDateLong, isoWeekday, todayInVN, weekdayName } from '../../lib/time';
 import { decideIndex } from '../../lib/policy';
+import { DATA_UNAVAILABLE_EMPTY } from '../../lib/degraded';
 
-const { dataset, source } = await loadDataset();
+const { dataset, degraded } = await loadDataset();
 const today = todayInVN();
 const drawingToday = stationsDrawingOn(dataset, today);
 
@@ -25,7 +26,6 @@ const hasExceptions = dataset.exceptions.length > 0;
   title="Lịch mở thưởng xổ số — đài quay hôm nay và cả tuần"
   description="Lịch mở thưởng theo ngày: đài quay hôm nay, lịch tuần theo miền, ngày nghỉ hoặc đổi lịch."
   decision={decision}
-  dataSource={source}
   notice={dataset.notice}
 >
   <h1>Lịch mở thưởng</h1>
@@ -37,7 +37,9 @@ const hasExceptions = dataset.exceptions.length > 0;
   <section class="card">
     <h2>Đài quay hôm nay</h2>
     {drawingToday.length === 0 ? (
-      <p class="meta">Hôm nay không có đài nào quay.</p>
+      <p class="meta">
+        {degraded ? DATA_UNAVAILABLE_EMPTY : 'Hôm nay không có đài nào quay.'}
+      </p>
     ) : (
       <table>
         <caption>{formatVNDate(today)}</caption>

@@ -8,6 +8,7 @@ vi.mock('../src/lib/data', () => ({
   loadDataset: async () => ({
     dataset: { index_enabled: state.enabled },
     source: 'd1',
+    degraded: false,
   }),
 }));
 

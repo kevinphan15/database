@@ -2,10 +2,11 @@
 import Base from '../../layouts/Base.astro';
 import { loadDataset } from '../../lib/data';
 import { decideIndex } from '../../lib/policy';
+import { DATA_UNAVAILABLE_EMPTY } from '../../lib/degraded';
 import { coverageLabel, specialStats } from '../../lib/stats';
 import { formatVNDate, todayInVN } from '../../lib/time';
 
-const { dataset, source } = await loadDataset();
+const { dataset, degraded } = await loadDataset();
 const today = todayInVN();
 const selectedSlug = Astro.url.searchParams.get('dai') ?? '';
 const stations = dataset.stations.filter((s) => s.status === 'active');
@@ -19,7 +20,6 @@ const decision = decideIndex({ kind: 'stats', indexEnabled: dataset.index_enable
   description="Thống kê giải đặc biệt theo đài, chỉ tính trên các kỳ đã xác nhận, kèm phạm vi và số kỳ thực có."
   decision={decision}
   canonicalPath="/thong-ke/giai-dac-biet/"
-  dataSource={source}
   notice={dataset.notice}
 >
   <h1>Thống kê giải đặc biệt</h1>
@@ -99,7 +99,9 @@ const decision = decideIndex({ kind: 'stats', indexEnabled: dataset.index_enable
         </section>
       </>
     ) : (
-      <p class="card meta">Chưa có đài nào trong dữ liệu.</p>
+      <p class="card meta">
+        {degraded ? DATA_UNAVAILABLE_EMPTY : 'Chưa có đài nào trong dữ liệu.'}
+      </p>
     )
   }
 </Base>

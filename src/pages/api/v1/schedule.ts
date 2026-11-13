@@ -4,11 +4,11 @@ import { jsonResponse } from '../../../lib/http';
 import { schedulePayload } from '../../../lib/public-api';
 
 export const GET: APIRoute = async () => {
-  const { dataset, source } = await loadDataset();
+  const { dataset, source, degraded } = await loadDataset();
   const reply = schedulePayload(dataset, new Date().toISOString());
 
   return jsonResponse(
-    { ...reply.body, source },
+    { ...reply.body, source, degraded },
     reply.status,
     { 'cache-control': 'public, max-age=300' },
   );

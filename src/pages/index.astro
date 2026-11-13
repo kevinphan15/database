@@ -5,8 +5,9 @@ import { loadDataset } from '../lib/data';
 import { latestPerStation, stationsDrawingOn } from '../lib/selectors';
 import { addDays, formatVNDate, formatVNDateLong, todayInVN } from '../lib/time';
 import { decideIndex } from '../lib/policy';
+import { DATA_UNAVAILABLE_EMPTY } from '../lib/degraded';
 
-const { dataset, source } = await loadDataset();
+const { dataset, degraded } = await loadDataset();
 const today = todayInVN();
 const yesterday = addDays(today, -1);
 
@@ -22,7 +23,6 @@ const decision = decideIndex({ kind: 'home', indexEnabled: dataset.index_enabled
   title="Kết quả xổ số các miền — tra theo miền, đài và ngày"
   description={`Kết quả xổ số theo miền, đài và ngày. Đang tra cứu ngày ${formatVNDate(today)}.`}
   decision={decision}
-  dataSource={source}
   notice={dataset.notice}
 >
   <h1>Kết quả xổ số hôm nay</h1>
@@ -64,6 +64,10 @@ const decision = decideIndex({ kind: 'home', indexEnabled: dataset.index_enabled
       ))
     }
   </div>
+
+  {regions.length === 0 && (
+    <p class="card meta">{degraded ? DATA_UNAVAILABLE_EMPTY : 'Chưa có dữ liệu miền và đài.'}</p>
+  )}
 
   <section class="card">
     <h2>Tra theo ngày</h2>
