@@ -21,25 +21,36 @@ let submittedDate = '';
 /** > 0 nghĩa là request bị chặn tần suất, giá trị là số giây phải chờ. */
 let blockedForSeconds = 0;
 
-if (isPost) {
-  const form = await Astro.request.formData();
-  submittedTicket = String(form.get('ticket') ?? '');
-  submittedDate = String(form.get('date') ?? '');
-  stationSlug = String(form.get('dai') ?? stationSlug);
+/** Body không phải form (client gửi JSON/rỗng) không được biến thành 500: bỏ qua phần dò vé. */
+async function readForm(request: Request): Promise<FormData | null> {
+  try {
+    return await request.formData();
+  } catch {
+    return null;
+  }
+}
 
-  const ip = Astro.request.headers.get('CF-Connecting-IP') ?? Astro.clientAddress ?? 'unknown';
-  const limit = await allowTicketCheck(ip);
-  if (!limit.allowed) {
-    blockedForSeconds = limit.retryAfterSeconds;
-  } else {
-    const station = stations.find((s) => s.slug === stationSlug) ?? stations[0] ?? null;
-    if (!station) {
-      outcome = { kind: 'not-confirmed', message: 'Chưa có đài nào trong dữ liệu để đối chiếu.' };
+if (isPost) {
+  const form = await readForm(Astro.request);
+  if (form) {
+    submittedTicket = String(form.get('ticket') ?? '');
+    submittedDate = String(form.get('date') ?? '');
+    stationSlug = String(form.get('dai') ?? stationSlug);
+
+    const ip = Astro.request.headers.get('CF-Connecting-IP') ?? Astro.clientAddress ?? 'unknown';
+    const limit = await allowTicketCheck(ip);
+    if (!limit.allowed) {
+      blockedForSeconds = limit.retryAfterSeconds;
     } else {
-      const draw = dataset.draws.find(
-        (d) => d.station_code === station.station_code && d.draw_date === submittedDate,
-      ) ?? null;
-      outcome = checkTicket(submittedTicket, draw, rulesFor(dataset, draw?.prize_rule_version ?? 1));
+      const station = stations.find((s) => s.slug === stationSlug) ?? stations[0] ?? null;
+      if (!station) {
+        outcome = { kind: 'not-confirmed', message: 'Chưa có đài nào trong dữ liệu để đối chiếu.' };
+      } else {
+        const draw = dataset.draws.find(
+          (d) => d.station_code === station.station_code && d.draw_date === submittedDate,
+        ) ?? null;
+        outcome = checkTicket(submittedTicket, draw, rulesFor(dataset, draw?.prize_rule_version ?? 1));
+      }
     }
   }
 }

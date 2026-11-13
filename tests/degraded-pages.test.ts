@@ -106,16 +106,22 @@ describe('D1 lỗi truy vấn → 503, no-store, banner', () => {
     expect(cacheControl).toBe('no-store');
   });
 
+  it('trang dò vé (POST body không phải form): 503, không cache', async () => {
+    const { status, cacheControl } = await render(DoVeSoPage, '/do-ve-so/', {}, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: '{"ticket":"001234"}',
+    });
+    expect(status).toBe(503);
+    expect(cacheControl).toBe('no-store');
+  });
+
   it('trang dò vé (POST form): 503, không cache', async () => {
     const { status, cacheControl } = await render(DoVeSoPage, '/do-ve-so/', {}, {
       method: 'POST',
-      // Cloudflare luôn gắn header này; thiếu nó thì trang gọi `Astro.clientAddress`, thứ không có
-      // trong AstroContainer và sẽ ném lỗi thay vì trả 503.
-      headers: {
-        'content-type': 'application/x-www-form-urlencoded',
-        'CF-Connecting-IP': '203.0.113.9',
-      },
-      body: new URLSearchParams({ ticket: '001234', date: '2026-11-04', dai: 'dong-nai' }).toString(),
+      // Thiếu `CF-Connecting-IP`, trang gọi `Astro.clientAddress` — AstroContainer không cấp nên ném lỗi.
+      headers: { 'content-type': 'application/x-www-form-urlencoded', 'CF-Connecting-IP': '203.0.113.9' },
+      body: 'ticket=001234',
     });
     expect(status).toBe(503);
     expect(cacheControl).toBe('no-store');
@@ -216,6 +222,16 @@ describe('không có lỗi D1 → không 503, không banner', () => {
       { mien: 'mien-nam', slug: '2026-11-12' },
     );
     expect(status).toBe(404);
+  });
+
+  it('trang dò vé (POST body không phải form): 200, không 500', async () => {
+    const { status, cacheControl } = await render(DoVeSoPage, '/do-ve-so/', {}, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: '{"ticket":"001234"}',
+    });
+    expect(status).toBe(200);
+    expect(cacheControl).toBe('no-store');
   });
 
   it('trang 200 bình thường không bị gán no-store', async () => {
