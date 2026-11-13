@@ -39,6 +39,7 @@ import RegionPage from '../src/pages/xo-so-[mien]/index.astro';
 import SchedulePage from '../src/pages/lich-mo-thuong/index.astro';
 import LedgerPage from '../src/pages/so-ket-qua/index.astro';
 import StatsPage from '../src/pages/thong-ke/giai-dac-biet.astro';
+import DoVeSoPage from '../src/pages/do-ve-so/index.astro';
 import StationOrDatePage from '../src/pages/xo-so-[mien]/[slug]/index.astro';
 import DatePage from '../src/pages/xo-so-[mien]/[dai]/[ngay]/index.astro';
 import { GET as resultsGET } from '../src/pages/api/v1/results';
@@ -100,6 +101,11 @@ describe('D1 lỗi truy vấn → banner giải thích', () => {
     expect(status).toBe(503);
     expect(cacheControl).toBe('no-store');
     expect(html).toContain(DATA_UNAVAILABLE_EMPTY);
+  });
+  it('trang dò vé: 503, không cache', async () => {
+    const { status, cacheControl } = await render(DoVeSoPage, '/do-ve-so/');
+    expect(status).toBe(503);
+    expect(cacheControl).toBe('no-store');
   });
 });
 

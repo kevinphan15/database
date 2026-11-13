@@ -60,6 +60,12 @@ if (isPost) {
   Astro.response.headers.set('X-Robots-Tag', 'noindex, follow');
   Astro.response.headers.set('Cache-Control', 'no-store');
 }
+
+if (degraded) {
+  // D1 lỗi truy vấn: không đối chiếu được vé nào, nên 503 + không cache như các trang nội dung khác.
+  Astro.response.status = 503;
+  Astro.response.headers.set('Cache-Control', 'no-store');
+}
 ---
 
 <Base
