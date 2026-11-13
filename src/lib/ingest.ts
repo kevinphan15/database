@@ -3,6 +3,7 @@
  * Phần này thuần logic (không I/O) để test được toàn bộ ma trận trạng thái.
  */
 
+import { isISODate } from './time';
 import type { DrawStatus } from './types';
 
 export type ObservationKind = 'live' | 'final';
@@ -24,22 +25,10 @@ export function drawKey(obs: Pick<Observation, 'station_code' | 'product_code' |
   return `${obs.station_code}:${obs.product_code}:${obs.draw_date}`;
 }
 
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const ISO_UTC_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/;
 const PRIZE_CODE_RE = /^[a-z_]{2,20}$/;
 const PRIZE_NUMBER_RE = /^\d{2,6}$/;
 const CODE_RE = /^[A-Za-z0-9_-]{1,40}$/;
-
-function isRealDate(value: string): boolean {
-  if (!DATE_RE.test(value)) return false;
-  const [year, month, day] = value.split('-').map(Number) as [number, number, number];
-  const parsed = new Date(Date.UTC(year, month - 1, day));
-  return (
-    parsed.getUTCFullYear() === year &&
-    parsed.getUTCMonth() === month - 1 &&
-    parsed.getUTCDate() === day
-  );
-}
 
 function optionalIso(value: unknown, field: string, errors: string[]): string | null {
   if (value === undefined || value === null) return null;
@@ -67,7 +56,7 @@ function optionalRuleVersion(value: unknown, errors: string[]): number {
   return 1;
 }
 
-export type ParsedObservation =
+type ParsedObservation =
   | { ok: true; value: Observation }
   | { ok: false; errors: string[] };
 
@@ -93,7 +82,7 @@ export function parseObservation(input: unknown): ParsedObservation {
   const source_id = code('source_id');
 
   const draw_date = typeof raw.draw_date === 'string' ? raw.draw_date : '';
-  if (!isRealDate(draw_date)) errors.push('draw_date phải là YYYY-MM-DD hợp lệ');
+  if (!isISODate(draw_date)) errors.push('draw_date phải là YYYY-MM-DD hợp lệ');
 
   const kind = raw.kind;
   if (kind !== 'live' && kind !== 'final') errors.push("kind phải là 'live' hoặc 'final'");
@@ -220,7 +209,7 @@ export type IngestAction =
   | 'dispute'
   | 'ignore_downgrade';
 
-export interface IngestDecision {
+interface IngestDecision {
   action: IngestAction;
   httpStatus: 200 | 201;
   /** Trạng thái mới của kỳ; null = giữ nguyên. */

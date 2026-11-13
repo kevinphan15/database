@@ -4,7 +4,7 @@ import { authorize, type Role } from './auth';
 import { getEnv } from './env';
 import { jsonResponse } from './http';
 
-export type InternalGuard =
+type InternalGuard =
   | { ok: true; db: D1Database }
   | { ok: false; response: Response };
 

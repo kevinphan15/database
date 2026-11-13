@@ -5,12 +5,10 @@ import { resultsPayload } from '../../../lib/public-api';
 
 export const GET: APIRoute = async ({ url }) => {
   const { dataset, source } = await loadDataset();
-  const limit = url.searchParams.get('limit');
-
   const reply = resultsPayload(dataset, {
     station: url.searchParams.get('dai'),
     date: url.searchParams.get('ngay'),
-    limit: limit === null ? 20 : Number(limit),
+    limit: Number(url.searchParams.get('limit') ?? 20),
   });
 
   return jsonResponse(

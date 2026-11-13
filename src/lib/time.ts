@@ -69,18 +69,20 @@ export function weekdayName(iso: number): string {
   return WEEKDAY_NAMES[iso - 1] ?? '';
 }
 
+/** "16:10" -> { hours: 16, minutes: 10 }; null nếu sai định dạng hoặc ngoài 24 giờ. */
+export function parseLocalTime(value: string): { hours: number; minutes: number } | null {
+  const match = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
+  if (!match) return null;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  return hours <= 23 && minutes <= 59 ? { hours, minutes } : null;
+}
+
 /** "16:10" -> "16:10"; dùng để so sánh chuỗi giờ địa phương. */
 export function normalizeLocalTime(value: string): string {
   const m = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
   if (!m) return value.trim();
   return `${String(m[1]).padStart(2, '0')}:${m[2]}`;
-}
-
-/** Số phút trễ so với thời điểm cập nhật (dùng cho nhãn "cập nhật lúc"). */
-export function minutesSince(iso: string, now: Date = new Date()): number {
-  const t = Date.parse(iso);
-  if (Number.isNaN(t)) return 0;
-  return Math.max(0, Math.round((now.getTime() - t) / 60000));
 }
 
 /** Hiển thị giờ Việt Nam từ một timestamp ISO. */

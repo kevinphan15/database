@@ -1,5 +1,7 @@
 /** Kiểm tra lô lịch quay: sai một dòng là từ chối cả lô (all-or-nothing). */
 
+import { isISODate, parseLocalTime } from './time';
+
 export interface ScheduleRuleInput {
   station_code: string;
   product_code: string;
@@ -25,21 +27,13 @@ export interface ScheduleSyncPayload {
   exceptions: ScheduleExceptionInput[];
 }
 
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+const isDate = (value: unknown): value is string =>
+  typeof value === 'string' && isISODate(value);
 
-function isRealDate(value: unknown): value is string {
-  if (typeof value !== 'string' || !DATE_RE.test(value)) return false;
-  const [year, month, day] = value.split('-').map(Number) as [number, number, number];
-  const parsed = new Date(Date.UTC(year, month - 1, day));
-  return (
-    parsed.getUTCFullYear() === year && parsed.getUTCMonth() === month - 1 && parsed.getUTCDate() === day
-  );
-}
-
+/** null = không gửi; undefined = gửi nhưng sai (để báo lỗi). */
 function optionalDate(value: unknown): string | null | undefined {
   if (value === undefined || value === null) return null;
-  return isRealDate(value) ? value : undefined;
+  return isDate(value) ? value : undefined;
 }
 
 export type ParsedScheduleSync =
@@ -80,10 +74,10 @@ export function parseScheduleSync(input: unknown): ParsedScheduleSync {
     if (typeof weekday !== 'number' || !Number.isInteger(weekday) || weekday < 1 || weekday > 7) {
       errors.push(`rules[${index}].iso_weekday phải là 1..7`);
     }
-    if (typeof time !== 'string' || !TIME_RE.test(time)) {
+    if (typeof time !== 'string' || parseLocalTime(time) === null) {
       errors.push(`rules[${index}].local_time phải là HH:MM (24h)`);
     }
-    if (!isRealDate(row.from_date)) errors.push(`rules[${index}].from_date phải là YYYY-MM-DD hợp lệ`);
+    if (!isDate(row.from_date)) errors.push(`rules[${index}].from_date phải là YYYY-MM-DD hợp lệ`);
     if (toDate === undefined) errors.push(`rules[${index}].to_date phải là YYYY-MM-DD hoặc null`);
 
     rules.push({
@@ -107,13 +101,13 @@ export function parseScheduleSync(input: unknown): ParsedScheduleSync {
     const newTime =
       row.new_time === undefined || row.new_time === null
         ? null
-        : typeof row.new_time === 'string' && TIME_RE.test(row.new_time)
+        : typeof row.new_time === 'string' && parseLocalTime(row.new_time) !== null
           ? row.new_time
           : undefined;
 
     if (!station) errors.push(`exceptions[${index}].station_code thiếu hoặc sai`);
     if (!product) errors.push(`exceptions[${index}].product_code thiếu hoặc sai`);
-    if (!isRealDate(row.exception_date)) {
+    if (!isDate(row.exception_date)) {
       errors.push(`exceptions[${index}].exception_date phải là YYYY-MM-DD hợp lệ`);
     }
     if (action !== 'skip' && action !== 'move') errors.push(`exceptions[${index}].action phải là skip|move`);

@@ -11,7 +11,7 @@ import {
 } from './ingest';
 import type { DrawStatus } from './types';
 
-export interface ProcessResult {
+interface ProcessResult {
   status: number;
   body: Record<string, unknown>;
 }

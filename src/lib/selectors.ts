@@ -122,10 +122,3 @@ export function nearestDrawDate(
   }
   return null;
 }
-
-/** Chuỗi ngày liên tiếp (dùng cho điều hướng ngày trước/sau). */
-export function dayWindow(date: string, before = 3, after = 3): string[] {
-  const out: string[] = [];
-  for (let i = -before; i <= after; i += 1) out.push(addDays(date, i));
-  return out;
-}

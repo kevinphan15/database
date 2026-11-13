@@ -1,6 +1,6 @@
 /** Đọc binding/secret của Worker. Trả về object rỗng khi chạy ngoài runtime Cloudflare. */
 
-export interface AppEnv {
+interface AppEnv {
   DB?: D1Database;
   INGEST_TOKEN?: string;
   OPERATOR_TOKEN?: string;

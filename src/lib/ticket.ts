@@ -94,8 +94,3 @@ export function checkTicket(
     hits,
   };
 }
-
-/** true nếu kết quả dò không được phép vào chỉ mục (mọi trường hợp có kết quả). */
-export function isTicketResultIndexable(): boolean {
-  return false;
-}

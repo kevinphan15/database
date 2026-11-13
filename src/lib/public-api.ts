@@ -5,10 +5,10 @@
 
 import { checkTicket } from './ticket';
 import { drawOnDate, drawsOfStation, rulesFor, scheduleOfStation } from './selectors';
-import { isISODate, isoWeekday } from './time';
+import { isISODate, isoWeekday, parseLocalTime } from './time';
 import type { Dataset, Draw, Station } from './types';
 
-export interface ApiReply {
+interface ApiReply {
   status: number;
   body: Record<string, unknown>;
 }
@@ -30,11 +30,9 @@ function shift(iso: string, minutes: number): string {
 
 /** Lần quay kế tiếp (UTC) của một rule lịch, null nếu rule sai định dạng. */
 export function nextDrawAt(weekday: number, localTime: string, now: Date): string | null {
-  const match = /^(\d{1,2}):(\d{2})$/.exec(localTime.trim());
-  if (!match) return null;
-  const hours = Number(match[1]);
-  const minutes = Number(match[2]);
-  if (hours > 23 || minutes > 59) return null;
+  const parsed = parseLocalTime(localTime);
+  if (!parsed) return null;
+  const { hours, minutes } = parsed;
 
   const nowVn = new Date(now.getTime() + VN_OFFSET_MIN * 60_000);
   for (let add = 0; add <= 7; add += 1) {
@@ -71,7 +69,7 @@ function serializedDraw(ds: Dataset, draw: Draw) {
   };
 }
 
-export interface ResultsParams {
+interface ResultsParams {
   /** slug đài, ví dụ "dong-nai" */
   station?: string | null;
   /** YYYY-MM-DD */
