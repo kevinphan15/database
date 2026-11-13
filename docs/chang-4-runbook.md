@@ -186,7 +186,7 @@ trạng thái **bắt buộc** cho tới khi xong checklist mục 6 (mục 25–
 
 Khi **D1 lỗi truy vấn** (bảng chưa tồn tại, D1 không đọc được), mọi trang HTML nội dung trả **503**
 chứ không phải 200 rỗng: `/`, trang miền/đài/ngày, `/lich-mo-thuong/`, `/so-ket-qua/`,
-`/thong-ke/giai-dac-biet/` — kèm banner giải thích, `X-Robots-Tag: noindex` và
+`/thong-ke/giai-dac-biet/`, `/do-ve-so/` — kèm banner giải thích, `X-Robots-Tag: noindex` và
 `Cache-Control: no-store`. Trang **404** (đường dẫn sai) cũng `no-store`, vì 404 nằm trong nhóm được
 phép cache theo heuristic (RFC 9111 §4.2.2) và sẽ dính lại trong cache trình duyệt sau khi URL có
 nội dung. Quy tắc chung: **không response lỗi nào được cache** — 503 báo sự cố, 404 báo đường dẫn
@@ -264,7 +264,7 @@ phục vụ bản cũ cho tới hết TTL.
 | 26 | `curl -sI $BASE/sitemap.xml \| grep -i cache-control` | `no-store`, **không** có `max-age` |
 | 27 | `curl -sI $BASE/khong-ton-tai/` | `404` + `cache-control: no-store` (trang 404 chung) |
 | 28 | `curl -sI $BASE/xo-so-mien-nam/khong-co/` | `404` + `no-store` — 404 của trang miền/đài/ngày cũng vậy |
-| 29 | local, D1 lỗi (persist rỗng): `curl -sI http://127.0.0.1:<port>/`, `/xo-so-mien-nam/`, `/lich-mo-thuong/`, `/so-ket-qua/`, `/thong-ke/giai-dac-biet/` | `503` + `no-store`, body có banner "Tạm thời chưa tải được dữ liệu…" |
+| 29 | local, D1 lỗi (persist rỗng): `curl -sI http://127.0.0.1:<port>/`, `/xo-so-mien-nam/`, `/lich-mo-thuong/`, `/so-ket-qua/`, `/thong-ke/giai-dac-biet/`, `/do-ve-so/` | `503` + `no-store`, body có banner "Tạm thời chưa tải được dữ liệu…" |
 
 Mục 29 chỉ kiểm được ở local: không mô phỏng D1 lỗi trên production mà không phá dữ liệu thật.
 
