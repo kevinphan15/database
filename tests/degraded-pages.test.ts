@@ -119,8 +119,8 @@ describe('D1 lỗi truy vấn → 503, no-store, banner', () => {
     expect(cacheControl).toBe('no-store');
   });
 
-  it('trang dò vé (POST form): 503, không cache', async () => {
-    const { status, cacheControl } = await render(DoVeSoPage, '/do-ve-so/', {}, {
+  it('trang dò vé (POST form): 503, không cache, noindex', async () => {
+    const { status, cacheControl, xRobotsTag } = await render(DoVeSoPage, '/do-ve-so/', {}, {
       method: 'POST',
       // POST đi qua limiter trước khi đọc body, và AstroContainer không cấp `Astro.clientAddress` —
       // thiếu header IP là trang ném lỗi thay vì trả response.
@@ -129,6 +129,7 @@ describe('D1 lỗi truy vấn → 503, no-store, banner', () => {
     });
     expect(status).toBe(503);
     expect(cacheControl).toBe('no-store');
+    expect(xRobotsTag).toBe('noindex, follow');
   });
 
   it('trang dò vé (POST bị chặn tần suất): 503, không cache', async () => {
@@ -149,27 +150,6 @@ describe('D1 lỗi truy vấn → 503, no-store, banner', () => {
     const { html } = await render(SchedulePage, '/lich-mo-thuong/');
     expect(html).toContain(DATA_UNAVAILABLE_NOTICE);
     expect(html).not.toContain('Hôm nay không có đài nào quay');
-  });
-});
-
-describe('POST /do-ve-so/ luôn noindex, follow', () => {
-  const post = () =>
-    render(DoVeSoPage, '/do-ve-so/', {}, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/x-www-form-urlencoded',
-        'CF-Connecting-IP': '203.0.113.12',
-      },
-      body: 'ticket=001234',
-    });
-
-  it('khi D1 lỗi', async () => {
-    expect((await post()).xRobotsTag).toBe('noindex, follow');
-  });
-
-  it('khi D1 khoẻ', async () => {
-    state.data = { dataset: EMPTY, source: 'd1', degraded: false };
-    expect((await post()).xRobotsTag).toBe('noindex, follow');
   });
 });
 
@@ -263,13 +243,14 @@ describe('không có lỗi D1 → không 503, không banner', () => {
   });
 
   it('trang dò vé (POST body không phải form): 200, không 500', async () => {
-    const { status, cacheControl } = await render(DoVeSoPage, '/do-ve-so/', {}, {
+    const { status, cacheControl, xRobotsTag } = await render(DoVeSoPage, '/do-ve-so/', {}, {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'CF-Connecting-IP': '203.0.113.11' },
       body: '{"ticket":"001234"}',
     });
     expect(status).toBe(200);
     expect(cacheControl).toBe('no-store');
+    expect(xRobotsTag).toBe('noindex, follow');
   });
 
   it('POST body không phải form vẫn bị đếm vào rate limit', async () => {
