@@ -57,7 +57,9 @@ async function readIndexEnabled(db: D1Database | null): Promise<boolean> {
 const EMPTY_DATASET: Dataset = {
   notice: '',
   is_fixture: false,
-  index_enabled: true,
+  // Trạng thái an toàn nếu dataset này lọt ra ngoài: `loadDataset` luôn ghi đè bằng giá trị
+  // trong `settings`, nhưng không để mặc định mở index ở đây.
+  index_enabled: false,
   product_code: 'xs-mn',
   prize_rule_version: 1,
   regions: [],

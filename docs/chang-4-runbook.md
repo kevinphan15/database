@@ -165,8 +165,8 @@ npx wrangler deploy
 ```
 
 > Hàng `index_enabled` chưa có trong D1 mới nên phải `insert or replace` — `update` sẽ khớp 0 dòng.
-> Code coi **thiếu hàng = bật** (để không tự khoá index của site đang chạy), nên bỏ qua bước này là
-> deploy sáng đèn ngay.
+> Code coi **thiếu hàng = bật** (để không tự khoá index của site đang chạy), còn **D1 lỗi khi đọc
+> settings = tắt**, nên bỏ qua bước này là deploy sáng đèn ngay.
 >
 > Sau khi Worker đã chạy, đổi công tắc bằng endpoint thay cho SQL (có hiệu lực ngay, không cần
 deploy lại):
