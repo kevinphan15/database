@@ -1,7 +1,8 @@
 /**
  * Nguồn dữ liệu của website.
- * - Nếu Worker có binding D1 và D1 có dữ liệu: đọc D1.
- * - Ngược lại (dev không có binding, D1 rỗng, hoặc lỗi): dùng fixture và hiển thị nhãn "dữ liệu mẫu".
+ * - Có binding D1: luôn đọc D1, kể cả khi rỗng — trang sẽ hiển thị trạng thái rỗng.
+ *   Lỗi D1 cũng trả dataset rỗng: thà trang trống còn hơn hiện số giả trên domain thật.
+ * - Không có binding D1 (dev thuần): dùng fixture và hiển thị nhãn "dữ liệu mẫu".
  */
 
 import { fixtureDataset } from './fixture';
@@ -44,22 +45,36 @@ async function readIndexEnabled(db: D1Database | null): Promise<boolean> {
   }
 }
 
+function emptyDataset(): Dataset {
+  return {
+    notice: '',
+    is_fixture: false,
+    index_enabled: true,
+    product_code: 'xs-mn',
+    prize_rule_version: 1,
+    regions: [],
+    stations: [],
+    prize_rules: [],
+    schedule: [],
+    exceptions: [],
+    draws: [],
+  };
+}
+
 async function loadBase(db: D1Database | null): Promise<LoadedData> {
   if (cached) return cached;
 
-  if (db) {
-    try {
-      const dataset = await loadFromD1(db);
-      if (dataset.stations.length > 0 && dataset.draws.length > 0) {
-        cached = { dataset, source: 'd1' };
-        return cached;
-      }
-    } catch (error) {
-      console.error('[data] không đọc được D1, tạm dùng fixture:', error);
-    }
+  if (!db) {
+    cached = { dataset: fixtureDataset, source: 'fixture' };
+    return cached;
   }
 
-  cached = { dataset: fixtureDataset, source: 'fixture' };
+  try {
+    cached = { dataset: await loadFromD1(db), source: 'd1' };
+  } catch (error) {
+    console.error('[data] không đọc được D1, trả trang rỗng thay vì dữ liệu mẫu:', error);
+    cached = { dataset: emptyDataset(), source: 'd1' };
+  }
   return cached;
 }
 

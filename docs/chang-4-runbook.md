@@ -56,6 +56,25 @@ npx wrangler d1 execute xoso-db --remote --command "select key, value from setti
 Kỳ vọng: đủ 15 bảng; `settings` **không** có `data_mode = fixture`; sau mục 5 thì có
 `publish_enabled = 0` và `index_enabled = 0` (trước đó bảng `settings` rỗng).
 
+### 1b. Hành vi khi D1 đã migrate nhưng chưa có dữ liệu
+
+Đây là trạng thái đúng sau mục 1 và trước mục 6 (n8n chưa chạy). Đo trên Worker build với D1 chỉ có
+`0001_init.sql`: **không có 5xx, không có dòng dữ liệu mẫu nào**.
+
+| URL | Kết quả mong đợi |
+|---|---|
+| `/` | 200 — “Kết quả xổ số hôm nay”, danh sách đài rỗng, không banner dữ liệu mẫu |
+| `/xo-so-mien-nam/` (+ trang đài, trang ngày) | **404** “Không tìm thấy miền” — chưa có đài thì không có trang để mở |
+| `/so-ket-qua/`, `/lich-mo-thuong/`, `/do-ve-so/`, `/huong-dan/`, `/thong-ke/giai-dac-biet/` | 200, nội dung rỗng, không banner |
+| `/sitemap.xml` | 200, urlset hợp lệ, **8 URL**: 5 trang tĩnh + 3 bài hướng dẫn, không có URL đài/ngày nào |
+| `/api/v1/results/`, `/api/v1/schedule/` | 200, `count: 0`, `source: "d1"` |
+| `/robots.txt` | 200, luật bình thường — hoặc `Disallow: /` nếu index đang tắt |
+
+Quy tắc đằng sau: **có binding D1 thì không bao giờ rơi về fixture**, kể cả khi D1 rỗng hoặc lỗi truy
+vấn — thà trang trống còn hơn hiện số giả trên domain thật. Fixture chỉ xuất hiện khi chạy
+`astro dev`/`wrangler dev` **không có** binding `DB`. Sitemap vì thế cũng không bao giờ chứa URL
+đài/ngày giả; khi index tắt thì urlset rỗng hoàn toàn.
+
 ## 2. Secrets
 
 ```bash
