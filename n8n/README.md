@@ -8,7 +8,7 @@ Bốn workflow, import bằng **n8n → Workflows → Import from File**. Múi g
 | `01-schedule-sync.json` | 06:00 hằng ngày | Lấy lịch quay từ nguồn → `POST /internal/v1/schedule-sync/` (kiểm tra cả lô) |
 | `02-live-results.json` | mỗi 3 phút, chỉ trong khung quay | Lấy số đang về → `POST /internal/v1/result-observations/` với `kind: "live"` |
 | `03-final-results.json` | mỗi 5 phút sau giờ quay | Lấy bảng giải chính thức → `POST` với `kind: "final"`, lọc phản hồi 409/422/423 để xử lý |
-| `04-health-alert.json` | mỗi 2 giờ | `GET /internal/v1/health/` → gửi cảnh báo khi trễ dữ liệu, có kỳ disputed hoặc `publish_enabled = 0` |
+| `04-health-alert.json` | mỗi 2 giờ | `GET /internal/v1/health/` → gửi cảnh báo khi trễ dữ liệu, có kỳ disputed, `publish_enabled = 0` hoặc `index_enabled = 0` (đang deploy tối) |
 
 **Lưu ý dấu `/` cuối:** site đặt `trailingSlash: 'always'`, nên mọi URL nội bộ phải có `/` cuối;
 thiếu slash Astro trả `308` và n8n phải theo redirect. Workflow trong thư mục này đã dùng URL có slash.

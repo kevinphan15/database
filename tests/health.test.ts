@@ -13,7 +13,12 @@ function row(over: Partial<HealthRow> = {}): HealthRow {
   };
 }
 
-const options = { publishEnabled: true, today: '2026-11-13', checkedAt: '2026-11-13T03:00:00Z' };
+const options = {
+  publishEnabled: true,
+  indexEnabled: true,
+  today: '2026-11-13',
+  checkedAt: '2026-11-13T03:00:00Z',
+};
 
 describe('buildHealthReport', () => {
   it('lag_days = 0 khi kỳ đã xác nhận có ngày ở tương lai', () => {
@@ -55,5 +60,13 @@ describe('buildHealthReport', () => {
     expect(report.publish_enabled).toBe(false);
     expect(report.stations[0]).toMatchObject({ pending: 3, disputed: 1 });
     expect(report).toMatchObject({ ok: true, today: '2026-11-13', checked_at: options.checkedAt });
+  });
+
+  it('báo chế độ tối qua index_enabled, độc lập với publish_enabled', () => {
+    const dark = buildHealthReport([row()], { ...options, indexEnabled: false });
+    expect(dark).toMatchObject({ publish_enabled: true, index_enabled: false });
+
+    const normal = buildHealthReport([row()], options);
+    expect(normal.index_enabled).toBe(true);
   });
 });

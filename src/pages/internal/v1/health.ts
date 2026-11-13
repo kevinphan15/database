@@ -2,6 +2,7 @@ import type { APIRoute } from 'astro';
 import { buildHealthReport, type HealthRow } from '../../../lib/health';
 import { jsonResponse } from '../../../lib/http';
 import { guardInternal } from '../../../lib/internal-route';
+import { readFlags } from '../../../lib/settings';
 import { todayInVN } from '../../../lib/time';
 
 export const GET: APIRoute = async ({ request }) => {
@@ -9,9 +10,7 @@ export const GET: APIRoute = async ({ request }) => {
   if (!guard.ok) return guard.response;
   const db = guard.db;
 
-  const publish = await db
-    .prepare("SELECT value FROM settings WHERE key = 'publish_enabled'")
-    .first<{ value: string }>();
+  const flags = await readFlags(db);
 
   const rows = await db
     .prepare(
@@ -31,7 +30,8 @@ export const GET: APIRoute = async ({ request }) => {
 
   return jsonResponse(
     buildHealthReport(rows.results ?? [], {
-      publishEnabled: publish?.value !== '0',
+      publishEnabled: flags.publish_enabled,
+      indexEnabled: flags.index_enabled,
       today: todayInVN(),
       checkedAt: new Date().toISOString(),
     }),

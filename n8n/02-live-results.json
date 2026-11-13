@@ -47,7 +47,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.XOSO_BASE_URL }}/internal/v1/result-observations/\",
+        "url": "={{ $env.XOSO_BASE_URL }}/internal/v1/result-observations/",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [

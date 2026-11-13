@@ -15,7 +15,7 @@
     },
     {
       "parameters": {
-        "url": "={{ $env.XOSO_BASE_URL }}/internal/v1/health/\",
+        "url": "={{ $env.XOSO_BASE_URL }}/internal/v1/health/",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -32,7 +32,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Cảnh báo khi xuất bản bị tắt, có kỳ disputed, hoặc dữ liệu trễ > 2 ngày.\nconst health = $input.first().json;\nconst alerts = [];\nif (health.publish_enabled === false) {\n  alerts.push('publish_enabled = 0: website đang ngừng nhận dữ liệu mới.');\n}\nfor (const row of health.stale ?? []) {\n  alerts.push(`Đài ${row.name} trễ ${row.lag_days === null ? 'chưa có bản xác nhận' : row.lag_days + ' ngày'}.`);\n}\nfor (const row of health.stations ?? []) {\n  if (row.disputed > 0) alerts.push(`Đài ${row.name} có ${row.disputed} kỳ disputed.`);\n  if (row.pending > 0) alerts.push(`Đài ${row.name} có ${row.pending} kỳ chưa đối soát.`);\n}\nif (alerts.length === 0) return [];\nreturn [{ json: { text: `[xoso] ${alerts.join(' | ')}`, checked_at: health.checked_at } }];"
+        "jsCode": "// Cảnh báo khi xuất bản bị tắt, có kỳ disputed, hoặc dữ liệu trễ > 2 ngày.\nconst health = $input.first().json;\nconst alerts = [];\nif (health.publish_enabled === false) {\n  alerts.push('publish_enabled = 0: website đang ngừng nhận dữ liệu mới.');\n}\nif (health.index_enabled === false) {\n  alerts.push('index_enabled = 0: site đang noindex (deploy tối) — robots chặn, sitemap rỗng.');\n}\nfor (const row of health.stale ?? []) {\n  alerts.push(`Đài ${row.name} trễ ${row.lag_days === null ? 'chưa có bản xác nhận' : row.lag_days + ' ngày'}.`);\n}\nfor (const row of health.stations ?? []) {\n  if (row.disputed > 0) alerts.push(`Đài ${row.name} có ${row.disputed} kỳ disputed.`);\n  if (row.pending > 0) alerts.push(`Đài ${row.name} có ${row.pending} kỳ chưa đối soát.`);\n}\nif (alerts.length === 0) return [];\nreturn [{ json: { text: `[xoso] ${alerts.join(' | ')}`, checked_at: health.checked_at } }];"
       },
       "id": "code-4",
       "name": "Tạo cảnh báo",

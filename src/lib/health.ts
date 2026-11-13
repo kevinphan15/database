@@ -11,6 +11,8 @@ export interface HealthRow {
 
 interface HealthOptions {
   publishEnabled: boolean;
+  /** Công tắc index toàn cục: false = site đang ở chế độ tối (noindex). */
+  indexEnabled: boolean;
   /** Hôm nay theo giờ VN, YYYY-MM-DD. */
   today: string;
   checkedAt: string;
@@ -38,6 +40,7 @@ export function buildHealthReport(rows: HealthRow[], options: HealthOptions) {
   return {
     ok: true,
     publish_enabled: options.publishEnabled,
+    index_enabled: options.indexEnabled,
     today: options.today,
     checked_at: options.checkedAt,
     stale: stations.filter((row) => row.lag_days === null || row.lag_days > 2),

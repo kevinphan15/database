@@ -73,7 +73,7 @@ Tất cả dưới `/internal/v1/`, yêu cầu `Authorization: Bearer <token>`, 
 | `POST /internal/v1/result-observations/` | ingest | Nhận một observation (`kind: live\|final`), bắt buộc header `Idempotency-Key` (8..128 ký tự) |
 | `POST /internal/v1/schedule-sync/` | ingest | Đồng bộ lịch quay theo lô `{rules, exceptions}`, kiểm tra cả lô trước khi ghi |
 | `POST /internal/v1/publish-mode/` | operator | `{publish_enabled?: bool, index_enabled?: bool}` — tắt publish thì ingest bị từ chối (423); tắt index có hiệu lực ngay (robots chặn, sitemap rỗng, mọi trang noindex) |
-| `GET /internal/v1/health/` | operator | Độ trễ dữ liệu theo đài, số kỳ pending/disputed, trạng thái xuất bản |
+| `GET /internal/v1/health/` | operator | Độ trễ dữ liệu theo đài, số kỳ pending/disputed, trạng thái xuất bản + `index_enabled` (chế độ tối) |
 
 Site đặt `trailingSlash: 'always'` nên các URL trên **phải có `/` cuối** (thiếu slash → `308`).
 
