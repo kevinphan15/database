@@ -1,6 +1,19 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { fixtureDataset } from '../src/lib/fixture';
 import { nextDrawAt, resultsPayload, schedulePayload, ticketCheckPayload } from '../src/lib/public-api';
+
+// Route công khai đọc qua loadDataset; mock để test phần header, không cần D1.
+vi.mock('../src/lib/data', async () => {
+  const { fixtureDataset: fixture } = await import('../src/lib/fixture');
+  return {
+    loadDataset: async () => ({ dataset: fixture, source: 'd1', degraded: false }),
+    resetDataCache: () => {},
+  };
+});
+
+import { GET as resultsGET } from '../src/pages/api/v1/results';
+import { GET as scheduleGET } from '../src/pages/api/v1/schedule';
+import { POST as ticketCheckPOST } from '../src/pages/api/v1/ticket-check';
 
 describe('GET /api/v1/results', () => {
   it('trả kỳ mới nhất của một đài, giữ số 0 ở đầu', () => {
@@ -143,5 +156,69 @@ describe('POST /api/v1/ticket-check', () => {
     });
     expect(reply.status).toBe(200);
     expect((reply.body.result as { kind: string }).kind).toBe('prize');
+  });
+});
+
+/**
+ * Route công khai không được giữ TTL, kể cả response lỗi: `generated_at`/`degraded`/kết quả
+ * dò vé đều tính theo lúc gọi, và bản `public, max-age` từng khiến client thấy dữ liệu cũ.
+ * Mỗi lần gọi dùng một IP riêng để bộ đếm rate limit trong bộ nhớ không ảnh hưởng lẫn nhau.
+ */
+describe('cache-control của route công khai', () => {
+  let caller = 0;
+
+  function call(handler: unknown, path: string, init?: RequestInit) {
+    caller += 1;
+    const url = new URL(path, 'https://xoso.test').toString();
+    return (
+      handler as (context: { url: URL; request: Request; clientAddress: string }) => Promise<Response>
+    )({
+      url: new URL(url),
+      request: new Request(url, init),
+      clientAddress: `203.0.113.${caller}`,
+    });
+  }
+
+  async function cacheControl(handler: unknown, path: string, init?: RequestInit) {
+    return (await call(handler, path, init)).headers.get('cache-control') ?? '';
+  }
+
+  const json = (body: unknown): RequestInit => ({ method: 'POST', body: JSON.stringify(body) });
+
+  it('GET /api/v1/schedule/ không giữ TTL', async () => {
+    expect(await cacheControl(scheduleGET, '/api/v1/schedule/')).toBe('no-store');
+  });
+
+  it('GET /api/v1/results/ không giữ TTL khi thành công và khi lỗi', async () => {
+    expect(await cacheControl(resultsGET, '/api/v1/results/?dai=dong-nai')).toBe('no-store');
+    expect(await cacheControl(resultsGET, '/api/v1/results/?dai=khong-co')).toBe('no-store');
+    expect(await cacheControl(resultsGET, '/api/v1/results/?ngay=2026-2-1')).toBe('no-store');
+  });
+
+  it('POST /api/v1/ticket-check/ không giữ TTL khi thành công và khi lỗi', async () => {
+    const body = { station: 'dong-nai', date: '2026-11-04', ticket: '001234' };
+    expect(await cacheControl(ticketCheckPOST, '/api/v1/ticket-check/', json(body))).toBe('no-store');
+    expect(
+      await cacheControl(ticketCheckPOST, '/api/v1/ticket-check/', json({ ...body, ticket: '12ab34' })),
+    ).toBe('no-store');
+    expect(await cacheControl(ticketCheckPOST, '/api/v1/ticket-check/', { method: 'POST', body: 'không-phải-json' }))
+      .toContain('no-store');
+  });
+
+  it('429 của /api/v1/ticket-check/ cũng không cache', async () => {
+    const request = json({ station: 'dong-nai', date: '2026-11-04', ticket: '001234' });
+    let response: Response | undefined;
+    // LIMITS.ticket.max = 10 mỗi 60 giây cho một IP; lần thứ 11 phải bị chặn.
+    for (let i = 0; i <= 10; i += 1) {
+      response = await (
+        ticketCheckPOST as (context: { url: URL; request: Request; clientAddress: string }) => Promise<Response>
+      )({
+        url: new URL('https://xoso.test/api/v1/ticket-check/'),
+        request: new Request('https://xoso.test/api/v1/ticket-check/', request),
+        clientAddress: '198.51.100.99',
+      });
+    }
+    expect(response?.status).toBe(429);
+    expect(response?.headers.get('cache-control') ?? '').toContain('no-store');
   });
 });
