@@ -4,18 +4,12 @@
  * trong bộ nhớ của isolate — biện pháp tạm, không phân tán giữa các location.
  */
 
-interface LimitConfig {
-  binding: 'TICKET_LIMITER' | 'INGEST_LIMITER';
-  max: number;
-  windowMs: number;
-}
-
 const LIMITS = {
   ticket: { binding: 'TICKET_LIMITER', max: 10, windowMs: 60_000 },
   ingest: { binding: 'INGEST_LIMITER', max: 60, windowMs: 60_000 },
-} as const satisfies Record<string, LimitConfig>;
+} as const;
 
-export type LimitKind = keyof typeof LIMITS;
+type LimitKind = keyof typeof LIMITS;
 
 interface RateLimiter {
   limit(options: { key: string }): Promise<{ success: boolean }>;
@@ -48,7 +42,7 @@ async function bindingLimiter(name: string): Promise<RateLimiter | null> {
   }
 }
 
-export async function allow(kind: LimitKind, key: string): Promise<boolean> {
+async function allow(kind: LimitKind, key: string): Promise<boolean> {
   const config = LIMITS[kind];
   const limiter = await bindingLimiter(config.binding);
   if (limiter) {

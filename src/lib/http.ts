@@ -16,6 +16,11 @@ export function jsonResponse(
   });
 }
 
+/** 429 thống nhất cho mọi endpoint JSON bị chặn tần suất. */
+export function rateLimited(detail = 'Quá nhiều request; thử lại sau khoảng một phút.'): Response {
+  return jsonResponse({ ok: false, error: 'rate_limited', detail }, 429, { 'retry-after': '60' });
+}
+
 export async function readJsonBody(request: Request): Promise<
   { ok: true; value: unknown } | { ok: false; response: Response }
 > {

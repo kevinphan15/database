@@ -26,7 +26,7 @@ if (isPost) {
   stationSlug = String(form.get('dai') ?? stationSlug);
 
   const ip = Astro.request.headers.get('CF-Connecting-IP') ?? Astro.clientAddress ?? 'unknown';
-  if (!(await allowTicketCheck(`ticket:${ip}`))) {
+  if (!(await allowTicketCheck(ip))) {
     rateLimited = true;
   } else {
     const station = stations.find((s) => s.slug === stationSlug) ?? stations[0] ?? null;
