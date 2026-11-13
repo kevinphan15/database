@@ -18,7 +18,7 @@ Khi chưa có binding D1, website tự dùng fixture (`src/data/fixture.json`) v
 ## D1 local
 
 ```bash
-npm run db:local:init     # schema + chỉ mục (migrations/0001_init.sql, 0003_chang3.sql)
+npm run db:local:init     # schema + chỉ mục (migrations/0001_init.sql)
 npm run db:local:seed     # dữ liệu mẫu, chỉ local (seed/fixture.sql)
 ```
 
@@ -38,7 +38,7 @@ src/lib/         time (giờ VN), format, policy (index), selectors, queries (D1
                  ticket (dò vé), stats, sitemap, redirects, ratelimit, ingest (luật A),
                  ingest-store (ghi D1), auth, schedule-sync, public-api, http, env
 n8n/             4 workflow JSON + hướng dẫn import
-migrations/      chỉ schema (0001 bảng, 0003 chỉ mục) — an toàn chạy trên D1 thật
+migrations/      schema + chỉ mục (0001_init.sql) — an toàn chạy trên D1 thật
 seed/            dữ liệu mẫu local — không bao giờ chạy lên D1 thật
 tests/           vitest
 docs/plan.md     kế hoạch tổng thể

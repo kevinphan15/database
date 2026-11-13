@@ -22,13 +22,29 @@ npx wrangler d1 create xoso-db
 npx wrangler d1 list                      # thấy xoso-db + id khớp file config
 npx wrangler d1 export xoso-db --remote --output backup-$(date +%Y%m%d).sql   # lần đầu sẽ rỗng
 npx wrangler d1 execute xoso-db --remote --file=./migrations/0001_init.sql
-npx wrangler d1 execute xoso-db --remote --file=./migrations/0003_chang3.sql
 npx wrangler d1 execute xoso-db --remote --file=./migrations/0004_sources.sql
 ```
 
 **Không chạy `seed/fixture.sql` ở remote** — đó là dữ liệu GIẢ (`data_mode = fixture`), sẽ hiện
 banner "DỮ LIỆU MẪU" và số sai trên domain thật. `migrations/` chỉ còn schema nên chạy remote là an
 toàn; mọi file seed phải nằm ngoài thư mục đó.
+
+**Đã kiểm chứng trên D1 local sạch (2026-11-13)** bằng đúng chuỗi production, không seed:
+
+```bash
+npx wrangler d1 execute xoso-db --local --persist-to /tmp/xoso-prodcheck --file=./migrations/0001_init.sql
+```
+
+Kết quả: **15 bảng + 4 chỉ mục**, và **0 dòng trên toàn bộ 15 bảng** — `sources 0`, `settings 0`,
+`draws 0`, `index_policy 0`, `redirects 0`. Đối chiếu D1 local có seed: `sources 3`, `settings 4`,
+`draws 6` — migration không mang dữ liệu mẫu đi đâu cả.
+
+> `migrations/0003_chang3.sql` đã bị xoá: nó chỉ chứa 3 index trùng tên với `0001` (nên chưa bao giờ
+> được áp) và 1 index không truy vấn nào dùng, cộng 2 nguồn mẫu. Chuỗi production hiện tại là
+> `0001_init.sql` (+ `0004_sources.sql` cho nguồn thật).
+>
+> Vì `settings` rỗng nghĩa là **mọi công tắc đang bật**, phải chạy mục 5 (deploy tối) trước khi trỏ
+> domain vào, nếu không site sẽ index ngay từ request đầu tiên.
 
 Kiểm:
 
@@ -37,7 +53,8 @@ npx wrangler d1 execute xoso-db --remote --command "select name from sqlite_mast
 npx wrangler d1 execute xoso-db --remote --command "select key, value from settings"
 ```
 
-Kỳ vọng: đủ 15 bảng; `settings` **không** có `data_mode = fixture`; có `publish_enabled = 0`.
+Kỳ vọng: đủ 15 bảng; `settings` **không** có `data_mode = fixture`; sau mục 5 thì có
+`publish_enabled = 0` và `index_enabled = 0` (trước đó bảng `settings` rỗng).
 
 ## 2. Secrets
 

@@ -9,7 +9,7 @@
     "build": "astro build",
     "preview": "astro preview",
     "test": "vitest run",
-    "db:local:init": "wrangler d1 execute xoso-db --local --file=./migrations/0001_init.sql && wrangler d1 execute xoso-db --local --file=./migrations/0003_chang3.sql",
+    "db:local:init": "wrangler d1 execute xoso-db --local --file=./migrations/0001_init.sql",
     "db:local:seed": "wrangler d1 execute xoso-db --local --file=./seed/fixture.sql"
   },
   "dependencies": {
