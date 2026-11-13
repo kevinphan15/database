@@ -19,7 +19,7 @@ if (!region) {
 
 const stations = region ? latestPerStation(dataset, region.code) : [];
 const drawingToday = region ? stationsDrawingOn(dataset, today, region.code) : [];
-const decision = decideIndex({ kind: 'region' });
+const decision = decideIndex({ kind: 'region', indexEnabled: dataset.index_enabled });
 ---
 
 <Base

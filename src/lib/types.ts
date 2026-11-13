@@ -62,6 +62,8 @@ export interface Draw {
 export interface Dataset {
   notice: string;
   is_fixture: boolean;
+  /** Công tắc index toàn cục (deploy tối): false → mọi trang noindex, robots chặn, sitemap rỗng. */
+  index_enabled: boolean;
   product_code: string;
   prize_rule_version: number;
   regions: Region[];

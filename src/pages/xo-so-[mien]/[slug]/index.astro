@@ -68,6 +68,7 @@ const hasPrizes = dateStations.some(({ draw }) => draw && Object.keys(draw.prize
 const decision = decideIndex({
   kind: isDateSegment ? 'date' : 'station',
   hasPrizes,
+  indexEnabled: dataset.index_enabled,
 });
 
 const title = notFound

@@ -1,10 +1,12 @@
 ---
 import Base from '../../layouts/Base.astro';
 import { getCollection } from 'astro:content';
+import { loadDataset } from '../../lib/data';
 import { decideIndex } from '../../lib/policy';
 
+const { dataset } = await loadDataset();
 const guides = (await getCollection('guides')).sort((a, b) => a.data.order - b.data.order);
-const decision = decideIndex({ kind: 'guide' });
+const decision = decideIndex({ kind: 'guide', indexEnabled: dataset.index_enabled });
 ---
 
 <Base

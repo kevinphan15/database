@@ -134,6 +134,7 @@ export function validateDataset(input: unknown): Dataset {
   return {
     notice: asString(root.notice, 'notice'),
     is_fixture: root.is_fixture === true,
+    index_enabled: root.index_enabled !== false,
     product_code: asString(root.product_code, 'product_code'),
     prize_rule_version: asNumber(root.prize_rule_version, 'prize_rule_version'),
     regions,

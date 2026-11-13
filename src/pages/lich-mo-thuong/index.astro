@@ -17,7 +17,7 @@ const week = Array.from({ length: 7 }, (_, i) => addDays(today, i)).map((date) =
   stations: stationsDrawingOn(dataset, date),
 }));
 
-const decision = decideIndex({ kind: 'schedule' });
+const decision = decideIndex({ kind: 'schedule', indexEnabled: dataset.index_enabled });
 const hasExceptions = dataset.exceptions.length > 0;
 ---
 

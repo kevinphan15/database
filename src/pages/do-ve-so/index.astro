@@ -51,7 +51,10 @@ const confirmedDraws = station
 const selectedDate = submittedDate || confirmedDraws[0]?.draw_date || '';
 
 // Trang công cụ được index; kết quả dò (POST) thì không.
-const decision = decideIndex({ kind: isPost ? 'ticket-check' : 'ticket-tool' });
+const decision = decideIndex({
+  kind: isPost ? 'ticket-check' : 'ticket-tool',
+  indexEnabled: dataset.index_enabled,
+});
 if (isPost) {
   Astro.response.headers.set('X-Robots-Tag', 'noindex, follow');
   Astro.response.headers.set('Cache-Control', 'no-store');

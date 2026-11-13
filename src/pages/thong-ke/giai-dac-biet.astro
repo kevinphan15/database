@@ -11,7 +11,7 @@ const selectedSlug = Astro.url.searchParams.get('dai') ?? '';
 const stations = dataset.stations.filter((s) => s.status === 'active');
 const station = stations.find((s) => s.slug === selectedSlug) ?? stations[0] ?? null;
 const stat = station ? specialStats(dataset, station, 30) : null;
-const decision = decideIndex({ kind: 'stats' });
+const decision = decideIndex({ kind: 'stats', indexEnabled: dataset.index_enabled });
 ---
 
 <Base

@@ -15,7 +15,7 @@ const regions = dataset.regions.map((region) => ({
   stations: latestPerStation(dataset, region.code),
 }));
 
-const decision = decideIndex({ kind: 'home' });
+const decision = decideIndex({ kind: 'home', indexEnabled: dataset.index_enabled });
 ---
 
 <Base

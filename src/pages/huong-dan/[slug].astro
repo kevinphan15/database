@@ -1,6 +1,7 @@
 ---
 import Base from '../../layouts/Base.astro';
 import { getEntry, render } from 'astro:content';
+import { loadDataset } from '../../lib/data';
 import { decideIndex } from '../../lib/policy';
 import { formatVNDate } from '../../lib/time';
 
@@ -11,7 +12,8 @@ if (!entry) {
   Astro.response.status = 404;
 }
 
-const decision = decideIndex({ kind: 'guide' });
+const { dataset } = await loadDataset();
+const decision = decideIndex({ kind: 'guide', indexEnabled: dataset.index_enabled });
 const Content = entry ? (await render(entry)).Content : null;
 const reviewed = entry ? entry.data.reviewed_at.toISOString().slice(0, 10) : '';
 ---

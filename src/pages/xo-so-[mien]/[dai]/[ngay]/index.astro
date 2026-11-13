@@ -27,7 +27,7 @@ if (!notFound && found && dateOk && !draw && !isDrawDay(dataset, found.station.s
 if (notFound) Astro.response.status = 404;
 
 const hasPrizes = draw ? Object.keys(draw.prizes).length > 0 : false;
-const decision = decideIndex({ kind: 'date', hasPrizes });
+const decision = decideIndex({ kind: 'date', hasPrizes, indexEnabled: dataset.index_enabled });
 const prevDate = found && dateOk ? nearestDrawDate(dataset, date, -1, { stationCode: found.station.station_code }) : null;
 const nextDate = found && dateOk ? nearestDrawDate(dataset, date, 1, { stationCode: found.station.station_code }) : null;
 

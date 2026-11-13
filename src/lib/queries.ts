@@ -90,6 +90,8 @@ export async function loadFromD1(db: D1Database): Promise<Dataset> {
   return {
     notice: settingMap.get('data_mode') === 'fixture' ? 'DỮ LIỆU MẪU từ D1 local.' : '',
     is_fixture: settingMap.get('data_mode') === 'fixture',
+    // Thiếu hàng → coi như bật (không tự khoá index của site đang chạy); tắt bằng '0'.
+    index_enabled: settingMap.get('index_enabled') !== '0',
     product_code: 'xs-mn',
     prize_rule_version: Number(settingMap.get('schema_version') ?? 1),
     regions: regions.results ?? [],

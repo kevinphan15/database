@@ -23,6 +23,9 @@ export interface SitemapOptions {
 }
 
 export function buildSitemap(ds: Dataset, options: SitemapOptions): SitemapEntry[] {
+  // Deploy tối: công tắc tắt thì sitemap rỗng, không liệt kê URL nào.
+  if (!ds.index_enabled) return [];
+
   const { baseUrl, today, windowDays = 90, extraPaths = [] } = options;
   const from = addDays(today, -windowDays);
   const entries: SitemapEntry[] = [];
@@ -100,8 +103,14 @@ function escapeXml(value: string): string {
     .replace(/'/g, '&apos;');
 }
 
-/** robots.txt: chặn URL sinh bởi tham số, trỏ tới sitemap. */
-export function renderRobots(baseUrl: string): string {
+/** robots.txt: chặn URL sinh bởi tham số, trỏ tới sitemap; tắt index thì chặn toàn bộ. */
+export function renderRobots(baseUrl: string, indexEnabled = true): string {
+  if (!indexEnabled) {
+    return `User-agent: *
+Disallow: /
+`;
+  }
+
   return `User-agent: *
 Allow: /
 # Bộ lọc và tham số không có nhu cầu tìm kiếm: chặn crawl để không sinh URL rỗng.

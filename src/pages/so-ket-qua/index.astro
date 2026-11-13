@@ -14,7 +14,7 @@ const station = stations.find((s) => s.slug === selectedSlug) ?? stations[0] ?? 
 const region = station ? dataset.regions.find((r) => r.code === station.region_code) ?? null : null;
 const draws = station ? drawsOfStation(dataset, station.station_code) : [];
 
-const decision = decideIndex({ kind: 'ledger' });
+const decision = decideIndex({ kind: 'ledger', indexEnabled: dataset.index_enabled });
 ---
 
 <Base
