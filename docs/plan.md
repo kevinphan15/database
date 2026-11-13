@@ -124,7 +124,7 @@ Chọn TTL thay vì purge: đính chính lan trong ≤ TTL.
 | 1 | Khung Astro + schema D1 + fixture Đồng Nai + 4 trang SSR + test + CI | HTML thô có lịch/bảng/trạng thái khi tắt JS; test & build xanh |
 | 2 | Trang ngày, sổ kết quả, thống kê, dò vé, content collections, sitemap/robots, redirects, 404 | Đủ 8 nhóm URL; checklist SEO pass |
 | 3 | Ingest + idempotency + luật A + publish-mode + health + 4 workflow n8n | Ca trùng/đồng thời/thiếu/lệch pass, không cần thao tác tay |
-| 4 | Subdomain, D1 thật, Workers Builds, deploy tối, load test, diễn tập khôi phục, bật index | 5 URL đúng, CPU trong ngưỡng, đã thử rollback |
+| 4 | Subdomain, D1 thật, Workers Builds, deploy tối, load test, diễn tập khôi phục, bật index | 5 URL đúng, CPU trong ngưỡng, đã thử rollback — runbook: [`chang-4-runbook.md`](chang-4-runbook.md) |
 
 ## 10. Còn treo
 

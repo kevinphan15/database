@@ -120,4 +120,5 @@ npx wrangler secret put OPERATOR_TOKEN  # token vận hành
 ```
 - ✅ Chặng 3: API `/internal/v1/*` (observations, schedule-sync, publish-mode, health), idempotency,
   luật xác nhận A, 4 workflow n8n (chưa chạy trên n8n thật — xem `n8n/README.md`)
-- ⏳ Chặng 4: tạo D1 thật, subdomain, Workers Builds, deploy tối, bật index
+- ⏳ Chặng 4: tạo D1 thật, subdomain, Workers Builds, deploy tối, bật index —
+  runbook + checklist sau deploy: [`docs/chang-4-runbook.md`](docs/chang-4-runbook.md)
