@@ -206,10 +206,10 @@ canonical) với `robots=noindex, nofollow` + `X-Robots-Tag: noindex`; `robots.t
 `not-confirmed`; 15 `publish=false, index=false`; 16 `401`/`422`; 17 `429` + `Retry-After: 60`; 18
 `draws=0`; 21 `423` và **không ghi gì** (`draws=0`, `ingest_events=0`); 24 bật `index_enabled` →
 robots `Allow`, sitemap 10 URL, không còn `X-Robots-Tag`, `meta robots` = `index, follow`; tắt lại →
-chặn ngay; 25–26 `no-store` trên cả `robots.txt` và `sitemap.xml`; 27–29 (`no-store` của 404/503 và
-trang chủ 503 khi D1 lỗi) đã kiểm trên local — 27–28 cần chạy lại trên domain thật. Chưa chạy được ở local: 3 (asset),
-8 (cần kỳ thật có 9 giải), 19 (`wrangler tail`, CPU gói Free), 20 (n8n chạy kỳ thật), 22–23
-(`deployments`/rollback) — phải làm trên domain thật.
+chặn ngay; 25–26 `no-store` trên cả `robots.txt` và `sitemap.xml`; 27–30 (`no-store` của 404/503,
+trang chủ 503 và POST body hỏng khi D1 lỗi) đã kiểm trên local — 27–28 cần chạy lại trên domain thật.
+Chưa chạy được ở local: 3 (asset), 8 (cần kỳ thật có 9 giải), 19 (`wrangler tail`, CPU gói Free),
+20 (n8n chạy kỳ thật), 22–23 (`deployments`/rollback) — phải làm trên domain thật.
 
 ### 6.1 Hạ tầng và header
 

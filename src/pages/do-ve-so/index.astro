@@ -30,17 +30,22 @@ async function readForm(request: Request): Promise<FormData | null> {
   }
 }
 
+// Limiter chạy trước khi đọc body, nếu không chỉ cần gửi JSON là vòng qua nó.
+if (isPost) {
+  const ip = Astro.request.headers.get('CF-Connecting-IP') ?? Astro.clientAddress ?? 'unknown';
+  const limit = await allowTicketCheck(ip);
+  if (!limit.allowed) {
+    blockedForSeconds = limit.retryAfterSeconds;
+  }
+}
+
 const form = isPost ? await readForm(Astro.request) : null;
 if (form) {
   submittedTicket = String(form.get('ticket') ?? '');
   submittedDate = String(form.get('date') ?? '');
   stationSlug = String(form.get('dai') ?? stationSlug);
 
-  const ip = Astro.request.headers.get('CF-Connecting-IP') ?? Astro.clientAddress ?? 'unknown';
-  const limit = await allowTicketCheck(ip);
-  if (!limit.allowed) {
-    blockedForSeconds = limit.retryAfterSeconds;
-  } else {
+  if (blockedForSeconds === 0) {
     const station = stations.find((s) => s.slug === stationSlug) ?? stations[0] ?? null;
     if (!station) {
       outcome = { kind: 'not-confirmed', message: 'Chưa có đài nào trong dữ liệu để đối chiếu.' };

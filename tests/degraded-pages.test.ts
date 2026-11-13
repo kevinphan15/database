@@ -32,6 +32,7 @@ vi.mock('../src/lib/data', () => ({
 
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { DATA_UNAVAILABLE_NOTICE, DATA_UNAVAILABLE_TITLE } from '../src/lib/degraded';
+import { allowTicketCheck, LIMITS, resetRateLimitState } from '../src/lib/ratelimit';
 
 import NotFoundPage from '../src/pages/404.astro';
 import HomePage from '../src/pages/index.astro';
@@ -65,12 +66,14 @@ async function render(
   return {
     status: response.status,
     cacheControl: response.headers.get('cache-control') ?? '',
+    xRobotsTag: response.headers.get('x-robots-tag') ?? '',
     html: await response.text(),
   };
 }
 
 beforeEach(() => {
   state.data = { dataset: degraded(), source: 'd1', degraded: true };
+  resetRateLimitState();
 });
 
 describe('D1 lỗi truy vấn → 503, no-store, banner', () => {
@@ -109,7 +112,8 @@ describe('D1 lỗi truy vấn → 503, no-store, banner', () => {
   it('trang dò vé (POST body không phải form): 503, không cache', async () => {
     const { status, cacheControl } = await render(DoVeSoPage, '/do-ve-so/', {}, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      // Limiter chạy trước khi đọc body, nên POST nào cũng cần header IP như ngoài Cloudflare.
+      headers: { 'content-type': 'application/json', 'CF-Connecting-IP': '203.0.113.10' },
       body: '{"ticket":"001234"}',
     });
     expect(status).toBe(503);
@@ -127,11 +131,45 @@ describe('D1 lỗi truy vấn → 503, no-store, banner', () => {
     expect(cacheControl).toBe('no-store');
   });
 
+  it('trang dò vé (POST bị chặn tần suất): 503, không cache', async () => {
+    const ip = '203.0.113.13';
+    for (let i = 0; i < LIMITS.ticket.max; i += 1) await allowTicketCheck(ip);
+    const { status, cacheControl, html } = await render(DoVeSoPage, '/do-ve-so/', {}, {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded', 'CF-Connecting-IP': ip },
+      body: 'ticket=001234',
+    });
+    expect(status).toBe(503);
+    expect(cacheControl).toBe('no-store');
+    expect(html).toContain('Quá nhiều lần dò');
+  });
+
   // Nội dung trang lịch: D1 lỗi thì phải hiện banner, không được khẳng định "hôm nay không có đài".
   it('trang lịch không khẳng định sai khi D1 lỗi', async () => {
     const { html } = await render(SchedulePage, '/lich-mo-thuong/');
     expect(html).toContain(DATA_UNAVAILABLE_NOTICE);
     expect(html).not.toContain('Hôm nay không có đài nào quay');
+  });
+});
+
+describe('POST /do-ve-so/ luôn noindex, follow', () => {
+  const post = () =>
+    render(DoVeSoPage, '/do-ve-so/', {}, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/x-www-form-urlencoded',
+        'CF-Connecting-IP': '203.0.113.12',
+      },
+      body: 'ticket=001234',
+    });
+
+  it('khi D1 lỗi', async () => {
+    expect((await post()).xRobotsTag).toBe('noindex, follow');
+  });
+
+  it('khi D1 khoẻ', async () => {
+    state.data = { dataset: EMPTY, source: 'd1', degraded: false };
+    expect((await post()).xRobotsTag).toBe('noindex, follow');
   });
 });
 
@@ -227,11 +265,24 @@ describe('không có lỗi D1 → không 503, không banner', () => {
   it('trang dò vé (POST body không phải form): 200, không 500', async () => {
     const { status, cacheControl } = await render(DoVeSoPage, '/do-ve-so/', {}, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', 'CF-Connecting-IP': '203.0.113.11' },
       body: '{"ticket":"001234"}',
     });
     expect(status).toBe(200);
     expect(cacheControl).toBe('no-store');
+  });
+
+  it('POST body không phải form vẫn bị đếm vào rate limit', async () => {
+    const post = () =>
+      render(DoVeSoPage, '/do-ve-so/', {}, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'CF-Connecting-IP': '198.51.100.7' },
+        body: '{"ticket":"001234"}',
+      });
+    for (let i = 0; i < LIMITS.ticket.max; i += 1) {
+      expect((await post()).html).not.toContain('Quá nhiều lần dò');
+    }
+    expect((await post()).html).toContain('Quá nhiều lần dò');
   });
 
   it('trang 200 bình thường không bị gán no-store', async () => {
