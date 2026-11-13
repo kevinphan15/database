@@ -182,7 +182,7 @@ Trong chế độ tối: `robots.txt` là `Disallow: /`, HTML có `X-Robots-Tag:
 ingest trả 423. Cả `robots.txt` và `sitemap.xml` trả `cache-control: no-store` — kiểm bằng
 `curl -sI $BASE/robots.txt | grep -i cache-control` phải ra `no-store`, vì `public, max-age=3600` sẽ
 khiến trình duyệt/crawler giữ `Allow: /` và danh sách URL cũ tới một giờ sau khi tắt index. Đây là
-trạng thái **bắt buộc** cho tới khi xong checklist mục 6 (mục 25–26).
+trạng thái **bắt buộc** cho tới khi xong checklist mục 6 (mục 25–26 kiểm đúng header này).
 
 ## 6. Checklist sau deploy (chạy trên domain thật)
 
@@ -196,9 +196,9 @@ canonical) với `robots=noindex, nofollow` + `X-Robots-Tag: noindex`; `robots.t
 `not-confirmed`; 15 `publish=false, index=false`; 16 `401`/`422`; 17 `429` + `Retry-After: 60`; 18
 `draws=0`; 21 `423` và **không ghi gì** (`draws=0`, `ingest_events=0`); 24 bật `index_enabled` →
 robots `Allow`, sitemap 10 URL, không còn `X-Robots-Tag`, `meta robots` = `index, follow`; tắt lại →
-chặn ngay; 25–26 `no-store` trên cả `robots.txt` và `sitemap.xml`. Chưa chạy được ở local: 3 (asset), 8
-(cần kỳ thật có 9 giải), 19 (`wrangler tail`, CPU
-gói Free), 20 (n8n chạy kỳ thật), 22–23 (`deployments`/rollback) — phải làm trên domain thật.
+chặn ngay; 25–26 `no-store` trên cả `robots.txt` và `sitemap.xml`. Chưa chạy được ở local: 3 (asset),
+8 (cần kỳ thật có 9 giải), 19 (`wrangler tail`, CPU gói Free), 20 (n8n chạy kỳ thật), 22–23
+(`deployments`/rollback) — phải làm trên domain thật.
 
 ### 6.1 Hạ tầng và header
 
@@ -208,7 +208,7 @@ gói Free), 20 (n8n chạy kỳ thật), 22–23 (`deployments`/rollback) — ph
 | 2 | `curl -sI $BASE/xo-so-mien-nam` | `301` → `/xo-so-mien-nam/` (một bước, đúng đích; `308` cũng đạt) |
 | 3 | `curl -s $BASE/ \| grep -c '<style'` | `1` — CSS được inline vào HTML (`global.css` ~3 KB), build **không** sinh `_astro/*.css`; luật `_headers` chỉ có tác dụng khi có asset thật |
 | 4 | `curl -sI $BASE/internal/v1/health/` | `401` (thiếu token) + `x-robots-tag: noindex` + `cache-control: no-store, private` |
-| 5 | `curl -sI $BASE/api/v1/results/` | `200`, `cache-control: no-store` |
+| 5 | `curl -sI $BASE/api/v1/results/` và `curl -sI $BASE/api/v1/schedule/` | `200`, `cache-control: no-store` ở **cả hai** |
 
 ### 6.2 Nội dung (5 nhóm URL)
 
@@ -253,6 +253,10 @@ Hai response này mang tín hiệu index; nếu bị cache có TTL thì tắt in
 |---|---|---|
 | 25 | `curl -sI $BASE/robots.txt \| grep -i cache-control` | `no-store`, **không** có `max-age` |
 | 26 | `curl -sI $BASE/sitemap.xml \| grep -i cache-control` | `no-store`, **không** có `max-age` |
+
+API công khai (`/api/v1/results/`, `/api/v1/schedule/`) cũng `no-store` (mục 5): payload có
+`generated_at`/`next_draw_at_utc`/`degraded` tính theo lúc gọi nên không giữ TTL — đừng nhầm với hai
+file trên khi kiểm.
 
 ## 7. Bật index
 

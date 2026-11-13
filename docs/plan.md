@@ -102,7 +102,7 @@ trùng lặp trong cùng site).
 |---|---|
 | Asset có hash | `max-age=31536000, immutable` (hiện CSS ~3 KB được inline vào HTML nên chưa có asset hash) |
 | Trang kỳ đã confirmed | `s-maxage=30..60, stale-while-revalidate=120` |
-| Trang hôm nay / live / API kết quả | `no-store` |
+| Trang hôm nay / live / API kết quả, `/api/v1/schedule/` | `no-store` (payload tính theo lúc gọi) |
 | `/internal/*`, ticket-check | `no-store, private` |
 | `robots.txt`, `sitemap.xml` | `no-store` — công tắc index phải có hiệu lực ngay, không phục vụ bản cache cũ |
 
