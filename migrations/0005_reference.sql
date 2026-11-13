@@ -10,10 +10,6 @@ INSERT OR IGNORE INTO stations
   (station_code, region_code, slug, name, short_name, status, redistribution_allowed, effective_from)
 VALUES ('DONG_NAI', 'MN', 'dong-nai', 'Đồng Nai', 'ĐN', 'active', 0, '2026-01-01');
 
-INSERT OR IGNORE INTO station_aliases (station_code, alias, from_date) VALUES
-  ('DONG_NAI', 'XS Đồng Nai', '2026-01-01'),
-  ('DONG_NAI', 'XSDN', '2026-01-01');
-
 INSERT OR IGNORE INTO products (product_code, name, prize_rule_version)
 VALUES ('xs-mn', 'Xổ số Miền Nam', 1);
 

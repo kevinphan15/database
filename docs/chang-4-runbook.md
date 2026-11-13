@@ -11,7 +11,7 @@ code trước** khi deploy; phần còn lại là thao tác tài khoản Cloudfl
 | 0.2 | Tạo API token **scoped** cho CI: `Workers Scripts:Edit` + `D1:Edit`, giới hạn account | `npx wrangler whoami` từ CI |
 | 0.3 | Chốt lựa chọn domain: **custom domain** (cần zone trong account) hay `xoso-web.<account>.workers.dev` | Xem mục 4 |
 | 0.4 | ✅ `wrangler.jsonc` đã dọn: chỉ còn top-level, `database_id` chỉ có **một** chỗ | `grep -c "database_id" wrangler.jsonc` → `1` |
-| 0.5 | ✅ Seed ở `seed/fixture.sql`; `migrations/` chỉ còn schema + metadata nguồn thật (`0004_sources.sql`, 2 nguồn) | `grep -l "INSERT" migrations/*.sql` → chỉ `0004_sources.sql` |
+| 0.5 | ✅ Seed ở `seed/fixture.sql`; `migrations/` chỉ còn schema + tham chiếu thật (`0004_sources.sql`, `0005_reference.sql`) | `grep -l "INSERT" migrations/*.sql` → chỉ 0004, 0005 |
 | 0.6 | ✅ Công tắc index đã đấu vào code và endpoint publish-mode (xem mục 7.0) | `grep -rn "indexEnabled" src` → có ở mọi trang |
 
 ## 1. Tạo D1 thật và nạp schema
