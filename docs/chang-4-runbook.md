@@ -182,7 +182,7 @@ Trong chế độ tối: `robots.txt` là `Disallow: /`, HTML có `X-Robots-Tag:
 ingest trả 423. Cả `robots.txt` và `sitemap.xml` trả `cache-control: no-store` — kiểm bằng
 `curl -sI $BASE/robots.txt | grep -i cache-control` phải ra `no-store`, vì `public, max-age=3600` sẽ
 khiến trình duyệt/crawler giữ `Allow: /` và danh sách URL cũ tới một giờ sau khi tắt index. Đây là
-trạng thái **bắt buộc** cho tới khi xong checklist mục 6 (mục 25–30 kiểm đúng các header này).
+trạng thái **bắt buộc** cho tới khi xong checklist mục 6 (mục 25–29 kiểm đúng các header này).
 
 Khi **D1 lỗi truy vấn** (bảng chưa tồn tại, D1 không đọc được), mọi trang HTML nội dung trả **503**
 chứ không phải 200 rỗng: `/`, trang miền/đài/ngày, `/lich-mo-thuong/`, `/so-ket-qua/`,
@@ -208,7 +208,7 @@ canonical) với `robots=noindex, nofollow` + `X-Robots-Tag: noindex`; `robots.t
 `not-confirmed`; 15 `publish=false, index=false`; 16 `401`/`422`; 17 `429` + `Retry-After: 60`; 18
 `draws=0`; 21 `423` và **không ghi gì** (`draws=0`, `ingest_events=0`); 24 bật `index_enabled` →
 robots `Allow`, sitemap 10 URL, không còn `X-Robots-Tag`, `meta robots` = `index, follow`; tắt lại →
-chặn ngay; 25–26 `no-store` trên cả `robots.txt` và `sitemap.xml`; 27–30 (`no-store` của 404/503,
+chặn ngay; 25–26 `no-store` trên cả `robots.txt` và `sitemap.xml`; 27–29 (`no-store` của 404/503,
 trang chủ 503 và POST body hỏng khi D1 lỗi) đã kiểm trên local — 27–28 cần chạy lại trên domain thật.
 Chưa chạy được ở local: 3 (asset), 8 (cần kỳ thật có 9 giải), 19 (`wrangler tail`, CPU gói Free),
 20 (n8n chạy kỳ thật), 22–23 (`deployments`/rollback) — phải làm trên domain thật.
@@ -268,10 +268,9 @@ phục vụ bản cũ cho tới hết TTL.
 | 26 | `curl -sI $BASE/sitemap.xml \| grep -i cache-control` | `no-store`, **không** có `max-age` |
 | 27 | `curl -sI $BASE/khong-ton-tai/` | `404` + `cache-control: no-store` (trang 404 chung) |
 | 28 | `curl -sI $BASE/xo-so-mien-nam/khong-co/` | `404` + `no-store` — 404 của trang miền/đài/ngày cũng vậy |
-| 29 | local, D1 lỗi (persist rỗng): `curl -sI http://127.0.0.1:<port>/`, `/xo-so-mien-nam/`, `/lich-mo-thuong/`, `/so-ket-qua/`, `/thong-ke/giai-dac-biet/`, `/do-ve-so/` | `503` + `no-store`, body có banner |
-| 30 | local: `curl -s -o /dev/null -D - -X POST -H 'content-type: application/json' -d '{"ticket":"001234"}' http://127.0.0.1:<port>/do-ve-so/` | D1 lỗi (persist rỗng): `503` + `no-store`; D1 khoẻ (seed `0001+0004+0005`): `200` + `no-store`, **không** `500` |
+| 29 | local: `curl -sI http://127.0.0.1:<port>/`, `/xo-so-mien-nam/`, `/lich-mo-thuong/`, `/so-ket-qua/`, `/thong-ke/giai-dac-biet/`, `/do-ve-so/`; `curl -s -o /dev/null -D - -X POST -H 'content-type: application/json' -d '{"ticket":"001234"}' http://127.0.0.1:<port>/do-ve-so/` | D1 lỗi (persist rỗng): GET các trang và POST body hỏng đều `503` + `no-store` (GET kèm banner); D1 khoẻ (seed `0001+0004+0005`): POST body hỏng `200` + `no-store`, **không** `500` |
 
-Mục 29–30 chỉ kiểm được ở local: không mô phỏng D1 lỗi trên production mà không phá dữ liệu thật.
+Mục 29 chỉ kiểm được ở local: không mô phỏng D1 lỗi trên production mà không phá dữ liệu thật.
 
 API công khai (`/api/v1/results/`, `/api/v1/schedule/`, `/api/v1/ticket-check/`) cũng `no-store`
 (mục 5) ở cả response thành công lẫn lỗi (400 JSON hỏng, 422, 429 → `no-store, private`): payload có
@@ -339,7 +338,7 @@ luật index theo mẫu URL.
 - [ ] 2 secret đã đặt, token CI scoped, 2FA bật
 - [ ] Workers Builds deploy xanh từ `main`; CI xanh
 - [ ] Subdomain/workers.dev trả 200 qua HTTPS
-- [ ] Checklist mục 6 (30 mục) xanh — riêng mục 29–30 chạy ở local với D1 lỗi (persist rỗng), không kiểm được trên domain thật
+- [ ] Checklist mục 6 (29 mục) xanh — riêng mục 29 chạy ở local với D1 lỗi (persist rỗng), không kiểm được trên domain thật
 - [ ] Đã diễn tập rollback Worker + tắt `publish_enabled`
 - [ ] Index đã bật, robots/sitemap/meta đúng, sitemap đã submit
 - [ ] n8n chạy ít nhất 1 kỳ thật end-to-end (live → final → confirmed/disputed)
