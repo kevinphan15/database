@@ -72,12 +72,6 @@ describe('robots.txt', () => {
     expect(body).toContain('Sitemap: https://xoso.test/sitemap.xml');
   });
 
-  it('no-store để tắt index có hiệu lực với bản đã cache', async () => {
-    state.db = emptyD1();
-    const { cacheControl } = await call('/robots.txt', robotsGET);
-    expect(cacheControl).toContain('no-store');
-    expect(cacheControl).not.toContain('max-age');
-  });
 });
 
 describe('sitemap.xml', () => {
@@ -95,10 +89,14 @@ describe('sitemap.xml', () => {
     expect(body).toContain('<url>');
   });
 
-  it('no-store để tắt index có hiệu lực với bản đã cache', async () => {
+});
+
+describe('robots.txt và sitemap.xml không được cache', () => {
+  it('trả đúng no-store, không có cửa sổ max-age giữ bản index-bật', async () => {
     state.db = emptyD1();
-    const { cacheControl } = await call('/sitemap.xml', sitemapGET);
-    expect(cacheControl).toContain('no-store');
-    expect(cacheControl).not.toContain('max-age');
+    const robots = await call('/robots.txt', robotsGET);
+    const sitemap = await call('/sitemap.xml', sitemapGET);
+    expect(robots.cacheControl).toBe('no-store');
+    expect(sitemap.cacheControl).toBe('no-store');
   });
 });
