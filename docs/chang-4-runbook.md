@@ -102,6 +102,14 @@ npx wrangler deploy
 > Hàng `index_enabled` chưa có trong D1 mới nên phải `insert or replace` — `update` sẽ khớp 0 dòng.
 > Code coi **thiếu hàng = bật** (để không tự khoá index của site đang chạy), nên bỏ qua bước này là
 > deploy sáng đèn ngay.
+>
+> Sau khi Worker đã chạy, đổi công tắc bằng endpoint thay cho SQL (có hiệu lực ngay, không cần
+deploy lại):
+>
+> ```bash
+> curl -s -X POST $BASE/internal/v1/publish-mode/ -H "Authorization: Bearer $OP" \
+>   -H 'content-type: application/json' -d '{"publish_enabled": true, "index_enabled": false}'
+> ```
 
 Trong chế độ tối: `robots.txt` là `Disallow: /`, HTML có `X-Robots-Tag: noindex`, sitemap rỗng,
 ingest trả 423. Đây là trạng thái **bắt buộc** cho tới khi xong checklist mục 6.
@@ -152,13 +160,14 @@ ingest trả 423. Đây là trạng thái **bắt buộc** cho tới khi xong ch
 | 21 | Tắt `publish_enabled=0` rồi POST observation | `423`, dữ liệu cũ vẫn hiển thị |
 | 22 | `npx wrangler deployments list` | có version hiện tại để rollback |
 | 23 | Diễn tập rollback: `npx wrangler rollback` rồi deploy lại | site trở lại bản trước, không mất dữ liệu D1 |
+| 24 | `POST /internal/v1/publish-mode/` với `{"index_enabled": false}` rồi `true` | 200, đổi ngay: robots chặn/bỏ chặn, sitemap rỗng/có URL, không cần deploy lại |
 
 ## 7. Bật index
 
 ### 7.0 Công tắc index — ✅ đã đấu xong
 
-- `settings.index_enabled`: `loadFromD1()` đọc thành `Dataset.index_enabled` (**thiếu hàng = bật**,
-  `'0'` = tắt); fixture mặc định bật.
+- `settings.index_enabled`: `loadDataset()` đọc **lại mỗi request** thành `Dataset.index_enabled`
+  (**thiếu hàng = bật**, `'0'` = tắt); fixture mặc định bật.
 - `decideIndex({ …, indexEnabled: dataset.index_enabled })` ở **mọi** trang (home, miền, đài, ngày,
   sổ kết quả, dò vé, hướng dẫn, thống kê). Trang 404 vốn đã `noindex` cố định.
 - `robots.txt`: tắt → `Disallow: /`, không khai sitemap; bật → luật cũ + `Sitemap:`.
@@ -170,14 +179,16 @@ ingest trả 423. Đây là trạng thái **bắt buộc** cho tới khi xong ch
 Còn lại (không chặn deploy): bảng `index_policy` trong D1 vẫn chưa được đọc — hiện là dự phòng cho
 luật index theo mẫu URL.
 
-> **Cạch vận hành:** dataset được cache theo isolate, nên đổi công tắc bằng `wrangler d1 execute`
-> chỉ có hiệu lực ở isolate mới (dần dần). Muốn tắt khẩn cấp tức thì thì deploy lại (hoặc bổ sung
-> `index_enabled` vào endpoint `/internal/v1/publish-mode/`, vốn đã gọi `resetDataCache()`).
+> **Đổi công tắc:** `/internal/v1/publish-mode/` nhận `{"publish_enabled"?: bool, "index_enabled"?: bool}`
+> (một hoặc cả hai), ghi cả hai trong một batch và trả giá trị hiệu lực. Công tắc index được **đọc
+> lại ở mỗi request** (một truy vấn khoá chính trong `settings`) nên tắt/bật có hiệu lực ngay trên
+> mọi isolate, không phải chờ isolate mới hay deploy lại. Sửa bằng `wrangler d1 execute` vẫn dùng
+> được nhưng chỉ ăn ở isolate mới — dùng endpoint khi cần tức thì.
 
 ### 7.1 Trình tự bật
 
 1. Xác nhận checklist mục 6 xanh 100% (trừ các mục cố ý ở chế độ tối).
-2. Bật index dữ liệu: `npx wrangler d1 execute xoso-db --remote --command "update settings set value='1' where key='index_enabled'"` (phải khớp 1 dòng — nếu 0 dòng là code 7.0 chưa đấu xong).
+2. Bật index: `curl -s -X POST $BASE/internal/v1/publish-mode/ -H "Authorization: Bearer $OP" -H 'content-type: application/json' -d '{"index_enabled": true}'` — phản hồi phải là `index_enabled: true`; nếu vẫn `false` thì lệnh không tới đúng Worker/D1.
 3. Kiểm ngay (chưa cần chờ bot):
    - `curl -s $BASE/robots.txt` → `Allow: /`, có `Sitemap: https://…/sitemap.xml`;
    - `curl -s $BASE/ <\!-- --> | grep robots` → `index, follow`;

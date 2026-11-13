@@ -6,6 +6,7 @@
 
 import { fixtureDataset } from './fixture';
 import { loadFromD1 } from './queries';
+import { readFlags } from './settings';
 import type { Dataset, DataSource } from './types';
 
 export interface LoadedData {
@@ -25,9 +26,27 @@ async function getDb(): Promise<D1Database | null> {
 }
 
 export async function loadDataset(): Promise<LoadedData> {
+  const db = await getDb();
+  const base = await loadBase(db);
+
+  // Công tắc index đọc lại mỗi request (một khoá chính) thay vì theo cache của isolate,
+  // để tắt index có hiệu lực ngay.
+  return { source: base.source, dataset: { ...base.dataset, index_enabled: await readIndexEnabled(db) } };
+}
+
+async function readIndexEnabled(db: D1Database | null): Promise<boolean> {
+  if (!db) return fixtureDataset.index_enabled;
+  try {
+    return (await readFlags(db)).index_enabled;
+  } catch (error) {
+    console.error('[data] không đọc được công tắc index, coi như đang bật:', error);
+    return true;
+  }
+}
+
+async function loadBase(db: D1Database | null): Promise<LoadedData> {
   if (cached) return cached;
 
-  const db = await getDb();
   if (db) {
     try {
       const dataset = await loadFromD1(db);
