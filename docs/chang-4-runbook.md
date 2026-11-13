@@ -74,19 +74,24 @@ Kỳ vọng: đủ 15 bảng; **đúng 2 nguồn** (`src-official` authoritative
 `data_mode = fixture`; sau mục 5 thì có
 `publish_enabled = 0` và `index_enabled = 0` (trước đó bảng `settings` rỗng).
 
-### 1b. Hành vi khi D1 đã migrate nhưng chưa có dữ liệu
+### 1b. Hành vi khi D1 đã migrate nhưng chưa có kỳ quay nào
 
-Đây là trạng thái đúng sau mục 1 và trước mục 6 (n8n chưa chạy). Đo trên Worker build với D1 chỉ có
-`0001_init.sql`: **không có 5xx, không có dòng dữ liệu mẫu nào**.
+Đây là trạng thái đúng sau mục 1 và trước lần chạy n8n đầu tiên: D1 có `0001 + 0004 + 0005`, bảng
+`draws` rỗng. Đo trên Worker build: **không có 5xx, không có dòng dữ liệu mẫu nào**.
 
 | URL | Kết quả mong đợi |
 |---|---|
-| `/` | 200 — “Kết quả xổ số hôm nay”, danh sách đài rỗng, không banner dữ liệu mẫu |
-| `/xo-so-mien-nam/` (+ trang đài, trang ngày) | **404** “Không tìm thấy miền” — chưa có đài thì không có trang để mở |
+| `/` | 200 — “Kết quả xổ số hôm nay”, có đài nhưng chưa có kỳ, không banner dữ liệu mẫu |
+| `/xo-so-mien-nam/`, `/xo-so-mien-nam/dong-nai/` | 200 — trang miền/đài rỗng (đã có tham chiếu, chưa có kết quả) |
+| `/xo-so-mien-nam/dong-nai/<ngày có quay>/` | 200, rỗng (thứ Tư nhưng chưa có kỳ) |
+| `/xo-so-mien-nam/dong-nai/<ngày không quay>/` | **404** |
 | `/so-ket-qua/`, `/lich-mo-thuong/`, `/do-ve-so/`, `/huong-dan/`, `/thong-ke/giai-dac-biet/` | 200, nội dung rỗng, không banner |
-| `/sitemap.xml` | 200, urlset hợp lệ, **8 URL**: 5 trang tĩnh + 3 bài hướng dẫn, không có URL đài/ngày nào |
+| `/sitemap.xml` | 200, urlset hợp lệ, **10 URL**: 8 trang tĩnh + miền + đài; **không** có URL trang ngày nào |
 | `/api/v1/results/`, `/api/v1/schedule/` | 200, `count: 0`, `source: "d1"` |
 | `/robots.txt` | 200, luật bình thường — hoặc `Disallow: /` nếu index đang tắt |
+
+Nếu chỉ chạy `0001` (chưa có `0004/0005`): mọi trang vẫn 200 nhưng chưa có đài, `/xo-so-mien-nam/`
+404 và sitemap chỉ có 8 trang tĩnh.
 
 **Khi D1 lỗi truy vấn** (khác với rỗng — ví dụ thiếu bảng, D1 hỏng): mọi trang có banner
 “Tạm thời chưa tải được dữ liệu kết quả…”; trang miền/đài/ngày trả **503** kèm câu “đây không phải
@@ -178,14 +183,25 @@ ingest trả 423. Đây là trạng thái **bắt buộc** cho tới khi xong ch
 
 Đặt `BASE=https://xoso.ten-mien.com` (hoặc host workers.dev).
 
+**Đã chạy phần chạy được trên local (2026-11-13):** Worker build + D1 sạch `0001+0004+0005` +
+`settings(index_enabled=0, publish_enabled=0)` ⇒ mục 1 `200 text/html`; 2 `301`; 4 `401` + `noindex` +
+`no-store, private`; 5 `200` + `no-store`; 6–11 mọi trang `200` (riêng ngày không quay `404`, không
+canonical) với `robots=noindex, nofollow` + `X-Robots-Tag: noindex`; `robots.txt` = `Disallow: /`
+(không `Sitemap:`); `sitemap.xml` 0 URL; 12 `ok:true, count:0`; 13 có `next_draw_at_utc`; 14
+`not-confirmed`; 15 `publish=false, index=false`; 16 `401`/`422`; 17 `429` + `Retry-After: 60`; 18
+`draws=0`; 21 `423` và **không ghi gì** (`draws=0`, `ingest_events=0`); 24 bật `index_enabled` →
+robots `Allow`, sitemap 10 URL, không còn `X-Robots-Tag`, `meta robots` = `index, follow`; tắt lại →
+chặn ngay. Chưa chạy được ở local: 3 (asset), 8 (cần kỳ thật có 9 giải), 19 (`wrangler tail`, CPU
+gói Free), 20 (n8n chạy kỳ thật), 22–23 (`deployments`/rollback) — phải làm trên domain thật.
+
 ### 6.1 Hạ tầng và header
 
 | # | Lệnh | Kỳ vọng |
 |---|---|---|
 | 1 | `curl -sI $BASE/` | `200`, `content-type: text/html` |
-| 2 | `curl -sI $BASE/xo-so-mien-nam` | `308` → `/xo-so-mien-nam/` (trailing slash) |
-| 3 | `curl -sI $BASE/_astro/<file>.css` | `200` + `cache-control: public, max-age=31536000, immutable` (adapter chèn qua `_headers`) |
-| 4 | `curl -sI $BASE/internal/v1/health/` | `403` (thiếu token) + `x-robots-tag: noindex` + `cache-control: no-store, private` |
+| 2 | `curl -sI $BASE/xo-so-mien-nam` | `301` → `/xo-so-mien-nam/` (một bước, đúng đích; `308` cũng đạt) |
+| 3 | `curl -s $BASE/ \| grep -c '<style'` | `1` — CSS được inline vào HTML (`global.css` ~3 KB), build **không** sinh `_astro/*.css`; luật `_headers` chỉ có tác dụng khi có asset thật |
+| 4 | `curl -sI $BASE/internal/v1/health/` | `401` (thiếu token) + `x-robots-tag: noindex` + `cache-control: no-store, private` |
 | 5 | `curl -sI $BASE/api/v1/results/` | `200`, `cache-control: no-store` |
 
 ### 6.2 Nội dung (5 nhóm URL)
@@ -206,7 +222,7 @@ ingest trả 423. Đây là trạng thái **bắt buộc** cho tới khi xong ch
 | 12 | `curl -s $BASE/api/v1/results/?dai=dong-nai&limit=2` | `ok:true`, `prizes` là chuỗi |
 | 13 | `curl -s $BASE/api/v1/schedule/` | có `next_draw_at_utc` |
 | 14 | `curl -s -X POST $BASE/api/v1/ticket-check/ -H 'content-type: application/json' -d '{"station":"dong-nai","date":"<ngày>","ticket":"000000"}'` | `result.kind` ∈ `prize\|no-prize\|not-confirmed` |
-| 15 | `curl -s $BASE/internal/v1/health/ -H "Authorization: Bearer $OP"` | `ok:true`, `lag_days >= 0`; token sai → `403` |
+| 15 | `curl -s $BASE/internal/v1/health/ -H "Authorization: Bearer $OP"` | `ok:true`, `lag_days >= 0`; token sai → `401`, dùng `INGEST_TOKEN` (sai vai trò) → `403` |
 | 16 | POST `result-observations` sai token | `401`; đúng token + payload sai | `422` |
 | 17 | 61 request liên tiếp | request cuối `429` + `Retry-After` |
 | 18 | `npx wrangler d1 execute xoso-db --remote --command "select count(*) from draws"` | khớp số kỳ đã nhận |
