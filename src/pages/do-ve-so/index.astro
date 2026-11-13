@@ -17,7 +17,8 @@ let stationSlug = querySlug;
 let outcome: TicketOutcome | null = null;
 let submittedTicket = '';
 let submittedDate = '';
-let rateLimited = false;
+/** > 0 nghĩa là request bị chặn tần suất, giá trị là số giây phải chờ. */
+let blockedForSeconds = 0;
 
 if (isPost) {
   const form = await Astro.request.formData();
@@ -26,8 +27,9 @@ if (isPost) {
   stationSlug = String(form.get('dai') ?? stationSlug);
 
   const ip = Astro.request.headers.get('CF-Connecting-IP') ?? Astro.clientAddress ?? 'unknown';
-  if (!(await allowTicketCheck(ip))) {
-    rateLimited = true;
+  const limit = await allowTicketCheck(ip);
+  if (!limit.allowed) {
+    blockedForSeconds = limit.retryAfterSeconds;
   } else {
     const station = stations.find((s) => s.slug === stationSlug) ?? stations[0] ?? null;
     if (!station) {
@@ -83,9 +85,9 @@ if (isPost) {
   </section>
 
   {
-    rateLimited && (
+    blockedForSeconds > 0 && (
       <p class="card" role="alert">
-        <strong>Quá nhiều lần dò.</strong> Vui lòng thử lại sau khoảng một phút.
+        <strong>Quá nhiều lần dò.</strong> Vui lòng thử lại sau khoảng {blockedForSeconds} giây.
       </p>
     )
   }

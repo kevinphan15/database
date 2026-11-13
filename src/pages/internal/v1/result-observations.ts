@@ -10,9 +10,8 @@ export const POST: APIRoute = async ({ request }) => {
   if (!guard.ok) return guard.response;
 
   // Chặn spam trước khi đọc/ghi D1; n8n chạy vài chục request/phút là thoải mái.
-  if (!(await allowIngest(request.headers.get('CF-Connecting-IP') ?? 'unknown'))) {
-    return rateLimited();
-  }
+  const limit = await allowIngest(request.headers.get('CF-Connecting-IP') ?? 'unknown');
+  if (!limit.allowed) return rateLimited(limit.retryAfterSeconds);
 
   const idemKey = request.headers.get('idempotency-key')?.trim() ?? '';
   if (idemKey.length < 8 || idemKey.length > 128) {

@@ -16,9 +16,20 @@ export function jsonResponse(
   });
 }
 
-/** 429 thống nhất cho mọi endpoint JSON bị chặn tần suất. */
-export function rateLimited(detail = 'Quá nhiều request; thử lại sau khoảng một phút.'): Response {
-  return jsonResponse({ ok: false, error: 'rate_limited', detail }, 429, { 'retry-after': '60' });
+/**
+ * 429 thống nhất cho mọi endpoint JSON bị chặn tần suất.
+ * `retryAfterSeconds` lấy từ cửa sổ của limiter, không hardcode, để đổi period là header đổi theo.
+ */
+export function rateLimited(retryAfterSeconds: number): Response {
+  return jsonResponse(
+    {
+      ok: false,
+      error: 'rate_limited',
+      detail: `Quá nhiều request; thử lại sau khoảng ${retryAfterSeconds} giây.`,
+    },
+    429,
+    { 'retry-after': String(retryAfterSeconds) },
+  );
 }
 
 export async function readJsonBody(request: Request): Promise<

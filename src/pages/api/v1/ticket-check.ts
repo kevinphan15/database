@@ -6,7 +6,8 @@ import { allowTicketCheck } from '../../../lib/ratelimit';
 
 export const POST: APIRoute = async ({ request, clientAddress }) => {
   const ip = request.headers.get('CF-Connecting-IP') ?? clientAddress ?? 'unknown';
-  if (!(await allowTicketCheck(ip))) return rateLimited();
+  const limit = await allowTicketCheck(ip);
+  if (!limit.allowed) return rateLimited(limit.retryAfterSeconds);
 
   const body = await readJsonBody(request);
   if (!body.ok) return body.response;
