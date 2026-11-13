@@ -112,7 +112,6 @@ describe('D1 lỗi truy vấn → 503, no-store, banner', () => {
   it('trang dò vé (POST body không phải form): 503, không cache', async () => {
     const { status, cacheControl } = await render(DoVeSoPage, '/do-ve-so/', {}, {
       method: 'POST',
-      // Limiter chạy trước khi đọc body, nên POST nào cũng cần header IP như ngoài Cloudflare.
       headers: { 'content-type': 'application/json', 'CF-Connecting-IP': '203.0.113.10' },
       body: '{"ticket":"001234"}',
     });
@@ -123,7 +122,8 @@ describe('D1 lỗi truy vấn → 503, no-store, banner', () => {
   it('trang dò vé (POST form): 503, không cache', async () => {
     const { status, cacheControl } = await render(DoVeSoPage, '/do-ve-so/', {}, {
       method: 'POST',
-      // Thiếu `CF-Connecting-IP`, trang gọi `Astro.clientAddress` — AstroContainer không cấp nên ném lỗi.
+      // POST đi qua limiter trước khi đọc body, và AstroContainer không cấp `Astro.clientAddress` —
+      // thiếu header IP là trang ném lỗi thay vì trả response.
       headers: { 'content-type': 'application/x-www-form-urlencoded', 'CF-Connecting-IP': '203.0.113.9' },
       body: 'ticket=001234',
     });
