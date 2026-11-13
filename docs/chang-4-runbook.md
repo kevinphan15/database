@@ -11,8 +11,8 @@ code trước** khi deploy; phần còn lại là thao tác tài khoản Cloudfl
 | 0.2 | Tạo API token **scoped** cho CI: `Workers Scripts:Edit` + `D1:Edit`, giới hạn account | `npx wrangler whoami` từ CI |
 | 0.3 | Chốt lựa chọn domain: **custom domain** (cần zone trong account) hay `xoso-web.<account>.workers.dev` | Xem mục 4 |
 | 0.4 | ✅ `wrangler.jsonc` đã dọn: chỉ còn top-level, `database_id` chỉ có **một** chỗ | `grep -c "database_id" wrangler.jsonc` → `1` |
-| 0.5 | 🔧 Seed đã tách sang `seed/fixture.sql`, `migrations/` sạch dữ liệu mẫu; còn phải thêm `migrations/0004_sources.sql` chứa nguồn thật | `grep -l "INSERT" migrations/*.sql` → không có |
-| 0.6 | 🔧 Đấu **công tắc index** vào code (xem mục 7.0) — hiện `indexEnabled` có trong `policy.ts` nhưng chưa nơi nào truyền | `grep -rn "indexEnabled" src` |
+| 0.5 | ✅ Seed ở `seed/fixture.sql`; `migrations/` chỉ còn schema + metadata nguồn thật (`0004_sources.sql`, 2 nguồn) | `grep -l "INSERT" migrations/*.sql` → chỉ `0004_sources.sql` |
+| 0.6 | ✅ Công tắc index đã đấu vào code và endpoint publish-mode (xem mục 7.0) | `grep -rn "indexEnabled" src` → có ở mọi trang |
 
 ## 1. Tạo D1 thật và nạp schema
 
@@ -23,6 +23,7 @@ npx wrangler d1 list                      # thấy xoso-db + id khớp file conf
 npx wrangler d1 export xoso-db --remote --output backup-$(date +%Y%m%d).sql   # lần đầu sẽ rỗng
 npx wrangler d1 execute xoso-db --remote --file=./migrations/0001_init.sql
 npx wrangler d1 execute xoso-db --remote --file=./migrations/0004_sources.sql
+npx wrangler d1 execute xoso-db --remote --file=./migrations/0005_reference.sql
 ```
 
 **Không chạy `seed/fixture.sql` ở remote** — đó là dữ liệu GIẢ (`data_mode = fixture`), sẽ hiện
@@ -33,15 +34,27 @@ toàn; mọi file seed phải nằm ngoài thư mục đó.
 
 ```bash
 npx wrangler d1 execute xoso-db --local --persist-to /tmp/xoso-prodcheck --file=./migrations/0001_init.sql
+npx wrangler d1 execute xoso-db --local --persist-to /tmp/xoso-prodcheck --file=./migrations/0004_sources.sql
+npx wrangler d1 execute xoso-db --local --persist-to /tmp/xoso-prodcheck --file=./migrations/0005_reference.sql
 ```
 
-Kết quả: **15 bảng + 4 chỉ mục**, và **0 dòng trên toàn bộ 15 bảng** — `sources 0`, `settings 0`,
-`draws 0`, `index_policy 0`, `redirects 0`. Đối chiếu D1 local có seed: `sources 3`, `settings 4`,
-`draws 6` — migration không mang dữ liệu mẫu đi đâu cả.
+Kết quả: **15 bảng + 4 chỉ mục**, **đúng 2 nguồn** (`src-official` = `official`/authoritative 1,
+`src-live` = `scrape`/authoritative 0), và **dữ liệu tham chiếu**: `regions 1`, `stations 1`,
+`products 1`, `prize_rules 9`, `schedule_rules 1`. Mọi bảng kết quả đều rỗng: `draws`,
+`result_revisions`, `ingest_events`, `settings`, `index_policy`, `redirects`, `stats_snapshots`,
+`schedule_exceptions` = 0. Chạy lại `0004`/`0005` vẫn đúng số đó (idempotent). Đối chiếu D1 local có
+seed: `sources 3`, `settings 4`, `draws 6` — không có kỳ quay hay số trúng nào lọt vào từ migration.
+
+**Đo end-to-end trên D1 sạch (0001 + 0004 + 0005):** `POST /internal/v1/result-observations/` với
+nguồn `src-official` → **201 `confirm`** (`confirmed`, lý do “nguồn authoritative”); trang đài
+`/xo-so-mien-nam/dong-nai/` và trang ngày `/xo-so-mien-nam/dong-nai/2026-11-11/` trả **200** và
+render đủ **9 nhãn giải** (`Giải Đặc Biệt` … `Giải Tám`) với số giữ nguyên số 0 đầu; sitemap có 11
+URL (8 trang tĩnh + miền + đài + ngày). Nếu chỉ chạy `0001 + 0004` thì ingest trả **422
+`unknown_station`** vì thiếu `stations`/`products`/`prize_rules` — đó là lý do `0005` tồn tại.
 
 > `migrations/0003_chang3.sql` đã bị xoá: nó chỉ chứa 3 index trùng tên với `0001` (nên chưa bao giờ
 > được áp) và 1 index không truy vấn nào dùng, cộng 2 nguồn mẫu. Chuỗi production hiện tại là
-> `0001_init.sql` (+ `0004_sources.sql` cho nguồn thật).
+> `0001_init.sql` + `0004_sources.sql`.
 >
 > Vì `settings` rỗng nghĩa là **mọi công tắc đang bật**, phải chạy mục 5 (deploy tối) trước khi trỏ
 > domain vào, nếu không site sẽ index ngay từ request đầu tiên.
@@ -51,9 +64,14 @@ Kiểm:
 ```bash
 npx wrangler d1 execute xoso-db --remote --command "select name from sqlite_master where type='table' order by name"
 npx wrangler d1 execute xoso-db --remote --command "select key, value from settings"
+npx wrangler d1 execute xoso-db --remote --command "select source_id, kind, is_authoritative from sources order by source_id"
+npx wrangler d1 execute xoso-db --remote --command "select (select count(*) from regions) regions, (select count(*) from stations) stations, (select count(*) from products) products, (select count(*) from prize_rules) prize_rules, (select count(*) from schedule_rules) schedule_rules, (select count(*) from draws) draws"
 ```
 
-Kỳ vọng: đủ 15 bảng; `settings` **không** có `data_mode = fixture`; sau mục 5 thì có
+Kỳ vọng: đủ 15 bảng; **đúng 2 nguồn** (`src-official` authoritative 1, `src-live` authoritative 0) và
+**dữ liệu tham chiếu** `regions 1 / stations 1 / products 1 / prize_rules 9 / schedule_rules 1`
+(`draws 0` trước khi n8n chạy) — lệch số này thì dừng, đừng chạy n8n; `settings` **không** có
+`data_mode = fixture`; sau mục 5 thì có
 `publish_enabled = 0` và `index_enabled = 0` (trước đó bảng `settings` rỗng).
 
 ### 1b. Hành vi khi D1 đã migrate nhưng chưa có dữ liệu

@@ -130,5 +130,7 @@ Chọn TTL thay vì purge: đính chính lan trong ≤ TTL.
 
 1. Tên subdomain cụ thể (chặng 4).
 2. Danh sách nguồn cào + nguồn nào là authoritative: chặng 3 đã dựng luật và nguồn MẪU
-   (`src-official` authoritative, `src-backup` thường) để kiểm thử; nguồn thật vẫn phải chốt.
+   (`src-official` authoritative, `src-backup` thường) để kiểm thử; nguồn thật đầu tiên đã có ở
+   `migrations/0004_sources.sql` (`src-official` authoritative, `src-live` không), chờ xác nhận quyền
+   sử dụng lại trước khi bật index.
 3. Bật 2FA Cloudflare (trước chặng 4).
