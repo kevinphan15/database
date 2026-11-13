@@ -9,6 +9,7 @@
     "build": "astro build",
     "preview": "astro preview",
     "test": "vitest run",
+    "check:n8n": "node scripts/check-n8n.mjs",
     "db:local:init": "wrangler d1 execute xoso-db --local --file=./migrations/0001_init.sql",
     "db:local:seed": "wrangler d1 execute xoso-db --local --file=./seed/fixture.sql"
   },

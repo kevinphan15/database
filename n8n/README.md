@@ -10,6 +10,9 @@ Bốn workflow, import bằng **n8n → Workflows → Import from File**. Múi g
 | `03-final-results.json` | mỗi 5 phút sau giờ quay | Lấy bảng giải chính thức → `POST` với `kind: "final"`, lọc phản hồi 409/422/423 để xử lý |
 | `04-health-alert.json` | mỗi 2 giờ | `GET /internal/v1/health/` → gửi cảnh báo khi trễ dữ liệu, có kỳ disputed, `publish_enabled = 0` hoặc `index_enabled = 0` (đang deploy tối) |
 
+**Trước khi import:** `npm run check:n8n` (CI cũng chạy bước này) — file workflow hỏng cú pháp thì
+n8n chỉ báo lúc import, nên đây là chốt chặn duy nhất.
+
 **Lưu ý dấu `/` cuối:** site đặt `trailingSlash: 'always'`, nên mọi URL nội bộ phải có `/` cuối;
 thiếu slash Astro trả `308` và n8n phải theo redirect. Workflow trong thư mục này đã dùng URL có slash.
 

@@ -20,6 +20,8 @@ jobs:
         run: npm test
       - name: Build
         run: npm run build
+      - name: Kiểm tra workflow n8n là JSON hợp lệ
+        run: npm run check:n8n
       - name: Kiểm tra migration + seed local chạy được trên SQLite
         run: |
           npm run db:local:init
