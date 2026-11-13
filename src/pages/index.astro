@@ -17,6 +17,13 @@ const regions = dataset.regions.map((region) => ({
 }));
 
 const decision = decideIndex({ kind: 'home', indexEnabled: dataset.index_enabled });
+
+if (degraded) {
+  // Trang chủ không có dữ liệu thì phải 503 như trang miền/đài/ngày, không phải 200 kèm banner:
+  // 200 khiến crawler coi đây là trang hợp lệ và làm mờ tín hiệu sự cố.
+  Astro.response.status = 503;
+  Astro.response.headers.set('Cache-Control', 'no-store');
+}
 ---
 
 <Base

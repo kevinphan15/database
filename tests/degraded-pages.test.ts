@@ -70,9 +70,10 @@ beforeEach(() => {
 });
 
 describe('D1 lỗi truy vấn → banner giải thích', () => {
-  it('trang chủ: 200 + banner, không lộ dữ liệu mẫu', async () => {
-    const { status, html } = await render(HomePage, '/');
-    expect(status).toBe(200);
+  it('trang chủ: 503 như trang miền/đài/ngày, banner, không cache, không lộ dữ liệu mẫu', async () => {
+    const { status, cacheControl, html } = await render(HomePage, '/');
+    expect(status).toBe(503);
+    expect(cacheControl).toBe('no-store');
     expect(html).toContain(DATA_UNAVAILABLE_NOTICE);
     expect(html).not.toContain('DỮ LIỆU MẪU');
   });
