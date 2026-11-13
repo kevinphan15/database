@@ -192,7 +192,7 @@ phép cache theo heuristic (RFC 9111 §4.2.2) và sẽ dính lại trong cache t
 nội dung. Quy tắc chung: **không response lỗi nào được cache** — 503 báo sự cố, 404 báo đường dẫn
 sai, cả hai đều không có nội dung ổn định để tái dùng. Riêng `/do-ve-so/`, POST body không phải form
 (JSON, rỗng) không thành 500: **503 + `no-store`** khi D1 lỗi, **200 + `no-store`** khi D1 khoẻ; body
-hỏng thì bỏ qua cả rate limit (không truy vấn gì) — đây không phải sự cố, đừng coi là crash.
+hỏng vẫn tính vào rate limit — đây không phải sự cố, đừng coi là crash.
 
 ## 6. Checklist sau deploy (chạy trên domain thật)
 
