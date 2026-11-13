@@ -194,7 +194,8 @@ sai, cả hai đều không có nội dung ổn định để tái dùng. Riêng
 (JSON, rỗng) không thành 500: **503 + `no-store`** khi D1 lỗi, **200 + `no-store`** khi D1 khoẻ; body
 hỏng vẫn tính vào rate limit — đây không phải sự cố, đừng coi là crash. Khi bị chặn tần suất, trang trả
 **200 + cảnh báo "Quá nhiều lần dò"** (503 nếu D1 lỗi), **không phải 429** — 429 chỉ có ở
-`/api/v1/ticket-check/`.
+`/api/v1/ticket-check/`. Đã hết hạn mức mà D1 lỗi thì POST `/do-ve-so/` vẫn trả **503 + `no-store`**
+kèm cảnh báo chặn — không phải 200, cũng không phải 500.
 
 ## 6. Checklist sau deploy (chạy trên domain thật)
 
