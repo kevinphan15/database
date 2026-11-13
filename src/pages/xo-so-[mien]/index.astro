@@ -25,6 +25,8 @@ if (degraded) {
 } else if (!region) {
   Astro.response.status = 404;
 }
+// 503 và 404 đều không có nội dung ổn định để tái dùng; 404 còn có thể bị cache theo heuristic.
+if (degraded || !region) Astro.response.headers.set('Cache-Control', 'no-store');
 
 const stations = region ? latestPerStation(dataset, region.code) : [];
 const drawingToday = region ? stationsDrawingOn(dataset, today, region.code) : [];

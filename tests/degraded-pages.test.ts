@@ -33,6 +33,7 @@ vi.mock('../src/lib/data', () => ({
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { DATA_UNAVAILABLE_NOTICE, DATA_UNAVAILABLE_TITLE } from '../src/lib/degraded';
 
+import NotFoundPage from '../src/pages/404.astro';
 import HomePage from '../src/pages/index.astro';
 import RegionPage from '../src/pages/xo-so-[mien]/index.astro';
 import SchedulePage from '../src/pages/lich-mo-thuong/index.astro';
@@ -57,7 +58,11 @@ async function render(
     request: new Request(`${BASE}${path}`),
     params,
   });
-  return { status: response.status, html: await response.text() };
+  return {
+    status: response.status,
+    cacheControl: response.headers.get('cache-control') ?? '',
+    html: await response.text(),
+  };
 }
 
 beforeEach(() => {
@@ -81,31 +86,74 @@ describe('D1 lỗi truy vấn → banner giải thích', () => {
 });
 
 describe('D1 lỗi truy vấn → 503, không phải 404', () => {
-  it('trang miền: 503, noindex, không canonical', async () => {
-    const { status, html } = await render(RegionPage, '/xo-so-mien-nam/', { mien: 'mien-nam' });
+  it('trang miền: 503, noindex, không canonical, không cache', async () => {
+    const { status, cacheControl, html } = await render(RegionPage, '/xo-so-mien-nam/', {
+      mien: 'mien-nam',
+    });
     expect(status).toBe(503);
+    expect(cacheControl).toBe('no-store');
     expect(html).toContain('Đây không phải lỗi đường dẫn');
     expect(html).toContain('name="robots" content="noindex, follow"');
     expect(html).not.toContain('rel="canonical"');
   });
 
-  it('trang đài: 503', async () => {
-    const { status, html } = await render(StationOrDatePage, '/xo-so-mien-nam/dong-nai/', {
-      mien: 'mien-nam',
-      slug: 'dong-nai',
-    });
+  it('trang đài: 503, không cache', async () => {
+    const { status, cacheControl, html } = await render(
+      StationOrDatePage,
+      '/xo-so-mien-nam/dong-nai/',
+      { mien: 'mien-nam', slug: 'dong-nai' },
+    );
     expect(status).toBe(503);
+    expect(cacheControl).toBe('no-store');
     expect(html).toContain(DATA_UNAVAILABLE_TITLE);
   });
 
-  it('trang ngày: 503', async () => {
-    const { status, html } = await render(
+  it('trang ngày: 503, không cache', async () => {
+    const { status, cacheControl, html } = await render(
       DatePage,
       '/xo-so-mien-nam/dong-nai/2026-11-11/',
       { mien: 'mien-nam', dai: 'dong-nai', ngay: '2026-11-11' },
     );
     expect(status).toBe(503);
+    expect(cacheControl).toBe('no-store');
     expect(html).toContain(DATA_UNAVAILABLE_TITLE);
+  });
+});
+
+describe('404 không được cache theo heuristic', () => {
+  beforeEach(() => {
+    // D1 đọc được nhưng không có dữ liệu: đây là 404 thật, không phải 503 degraded.
+    state.data = { dataset: EMPTY, source: 'd1', degraded: false };
+  });
+
+  it('trang 404 chung: no-store', async () => {
+    const { status, cacheControl } = await render(NotFoundPage, '/khong-ton-tai/');
+    expect(status).toBe(404);
+    expect(cacheControl).toBe('no-store');
+  });
+
+  it('404 của trang miền: no-store', async () => {
+    const { status, cacheControl } = await render(RegionPage, '/xo-so-mien-nam/khong-co/', {
+      mien: 'khong-co',
+    });
+    expect(status).toBe(404);
+    expect(cacheControl).toBe('no-store');
+  });
+
+  it('404 của trang đài/ngày: no-store', async () => {
+    const { status, cacheControl } = await render(
+      StationOrDatePage,
+      '/xo-so-mien-nam/dong-nai/2026-11-12/',
+      { mien: 'mien-nam', slug: '2026-11-12' },
+    );
+    expect(status).toBe(404);
+    expect(cacheControl).toBe('no-store');
+  });
+
+  it('trang 200 bình thường không bị gán no-store', async () => {
+    const { status, cacheControl } = await render(HomePage, '/');
+    expect(status).toBe(200);
+    expect(cacheControl).toBe('');
   });
 });
 

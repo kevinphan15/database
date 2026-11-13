@@ -72,6 +72,8 @@ if (!degraded) {
 
 if (degraded) Astro.response.status = 503;
 else if (notFound) Astro.response.status = 404;
+// 503 và 404 đều không có nội dung ổn định để tái dùng; 404 còn có thể bị cache theo heuristic.
+if (degraded || notFound) Astro.response.headers.set('Cache-Control', 'no-store');
 
 const hasPrizes = dateStations.some(({ draw }) => draw && Object.keys(draw.prizes).length > 0);
 const decision = degraded

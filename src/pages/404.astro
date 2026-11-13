@@ -3,6 +3,8 @@ import Base from '../layouts/Base.astro';
 import { decideIndex } from '../lib/policy';
 
 Astro.response.status = 404;
+// 404 nằm trong nhóm được phép cache theo heuristic (RFC 9111 §4.2.2), nên phải nói rõ là không giữ.
+Astro.response.headers.set('Cache-Control', 'no-store');
 const decision = { index: false, follow: false, reason: 'trang 404' };
 ---
 
