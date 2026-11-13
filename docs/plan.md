@@ -104,6 +104,7 @@ trùng lặp trong cùng site).
 | Trang kỳ đã confirmed | `s-maxage=30..60, stale-while-revalidate=120` |
 | Trang hôm nay / live / API kết quả | `no-store` |
 | `/internal/*`, ticket-check | `no-store, private` |
+| `robots.txt`, `sitemap.xml` | `no-store` — công tắc index phải có hiệu lực ngay, không phục vụ bản cache cũ |
 
 Chọn TTL thay vì purge: đính chính lan trong ≤ TTL.
 

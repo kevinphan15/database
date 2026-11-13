@@ -2,6 +2,8 @@
  * Deploy tối: không đọc được `settings` (D1 lỗi truy vấn) thì index phải TẮT.
  * Fail-open ở đây sẽ mở index cho robots.txt/sitemap.xml của một site chưa được duyệt.
  * Ngược lại, thiếu hàng trong settings vẫn là bật (để không tự khoá site đang chạy).
+ * Cũng khoá việc hai response này không được cache: `public, max-age=3600` từng khiến
+ * trình duyệt/crawler giữ `Allow: /` + sitemap có URL tới 1 giờ sau khi tắt index.
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -41,7 +43,11 @@ function emptyD1() {
 async function call(path: string, route: unknown) {
   const get = route as (context: { url: URL }) => Promise<Response>;
   const response = await get({ url: new URL(`https://xoso.test${path}`) });
-  return { status: response.status, body: await response.text() };
+  return {
+    status: response.status,
+    body: await response.text(),
+    cacheControl: response.headers.get('cache-control') ?? '',
+  };
 }
 
 beforeEach(() => {
@@ -49,8 +55,8 @@ beforeEach(() => {
   state.db = null;
 });
 
-describe('robots.txt khi không đọc được settings', () => {
-  it('D1 lỗi → Disallow: / và không khai sitemap', async () => {
+describe('robots.txt', () => {
+  it('D1 lỗi → Disallow: /, không khai sitemap', async () => {
     state.db = brokenD1();
     const { status, body } = await call('/robots.txt', robotsGET);
     expect(status).toBe(200);
@@ -65,9 +71,16 @@ describe('robots.txt khi không đọc được settings', () => {
     expect(body).toContain('Allow: /');
     expect(body).toContain('Sitemap: https://xoso.test/sitemap.xml');
   });
+
+  it('no-store để tắt index có hiệu lực với bản đã cache', async () => {
+    state.db = emptyD1();
+    const { cacheControl } = await call('/robots.txt', robotsGET);
+    expect(cacheControl).toContain('no-store');
+    expect(cacheControl).not.toContain('max-age');
+  });
 });
 
-describe('sitemap.xml khi không đọc được settings', () => {
+describe('sitemap.xml', () => {
   it('D1 lỗi → urlset rỗng, vẫn 200', async () => {
     state.db = brokenD1();
     const { status, body } = await call('/sitemap.xml', sitemapGET);
@@ -80,5 +93,12 @@ describe('sitemap.xml khi không đọc được settings', () => {
     state.db = emptyD1();
     const { body } = await call('/sitemap.xml', sitemapGET);
     expect(body).toContain('<url>');
+  });
+
+  it('no-store để tắt index có hiệu lực với bản đã cache', async () => {
+    state.db = emptyD1();
+    const { cacheControl } = await call('/sitemap.xml', sitemapGET);
+    expect(cacheControl).toContain('no-store');
+    expect(cacheControl).not.toContain('max-age');
   });
 });

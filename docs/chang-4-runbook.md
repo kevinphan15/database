@@ -177,7 +177,8 @@ deploy lại):
 > ```
 
 Trong chế độ tối: `robots.txt` là `Disallow: /`, HTML có `X-Robots-Tag: noindex`, sitemap rỗng,
-ingest trả 423. Đây là trạng thái **bắt buộc** cho tới khi xong checklist mục 6.
+ingest trả 423. Cả `robots.txt` và `sitemap.xml` trả `cache-control: no-store`, nên tắt index không bị
+bản cache cũ (`max-age`) giữ lại. Đây là trạng thái **bắt buộc** cho tới khi xong checklist mục 6.
 
 ## 6. Checklist sau deploy (chạy trên domain thật)
 

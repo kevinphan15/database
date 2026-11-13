@@ -17,7 +17,8 @@ export const GET: APIRoute = async ({ url }) => {
   return new Response(renderSitemap(entries), {
     headers: {
       'content-type': 'application/xml; charset=utf-8',
-      'cache-control': 'public, max-age=3600',
+      // Không cache: sitemap phải rỗng ngay khi tắt index, không phục vụ bản index-bật cũ.
+      'cache-control': 'no-store',
     },
   });
 };
