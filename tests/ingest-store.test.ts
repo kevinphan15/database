@@ -179,6 +179,21 @@ describe('idempotency — retry với timestamp mới', () => {
   });
 });
 
+describe('publish-mode', () => {
+  it('từ chối 423 và không ghi gì khi publish_enabled = 0', async () => {
+    const db = makeDb();
+    db.raw.exec("UPDATE settings SET value = '0' WHERE key = 'publish_enabled'");
+
+    const result = await ingest(db, obs(), 'idem-off-0001');
+
+    expect(result.status).toBe(423);
+    expect(result.body.error).toBe('publish_disabled');
+    expect(db.scalar('SELECT COUNT(*) AS n FROM ingest_events')).toBe(0);
+    expect(db.scalar('SELECT COUNT(*) AS n FROM result_revisions')).toBe(0);
+    expect(db.scalar('SELECT COUNT(*) AS n FROM draws')).toBe(0);
+  });
+});
+
 describe('guard rev — rollback trong batch', () => {
   let db: FakeDb;
 

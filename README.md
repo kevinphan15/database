@@ -31,12 +31,13 @@ Sau khi seed, `wrangler dev`/`astro dev` có binding `DB` sẽ đọc dữ liệ
 src/pages/       trang SSR: chủ, miền, đài, ngày, sổ kết quả, thống kê, dò vé, hướng dẫn,
                  sitemap.xml, robots.txt, 404
 src/pages/internal/v1/  API cho n8n (observations, schedule-sync, publish-mode, health)
+src/pages/api/v1/       API đọc công khai (results, schedule, ticket-check)
 src/components/  PrizeTable, StatusBadge, ScheduleTable, DateBody, StationBody
 src/content/     bài hướng dẫn (content collection `guides`)
 src/layouts/     Base.astro (canonical + meta robots)
 src/lib/         time (giờ VN), format, policy (index), selectors, queries (D1), fixture,
                  ticket (dò vé), stats, sitemap, redirects, ratelimit, ingest (luật A),
-                 ingest-store (ghi D1), auth, schedule-sync, http, env
+                 ingest-store (ghi D1), auth, schedule-sync, public-api, http, env
 n8n/             4 workflow JSON + hướng dẫn import
 migrations/      schema, seed, 0003 (chỉ mục + nguồn authoritative mẫu cho kiểm thử)
 tests/           vitest
@@ -98,6 +99,18 @@ Luật A: nguồn `is_authoritative = 1` → xác nhận ngay; hai nguồn thư�
 `auto:dual-source`; một nguồn thường → `pending_confirmation` (hiện số, dò vé từ chối); hai bản final
 khác hash → `disputed` (giữ bản cũ); bản final mới khác hash từ nguồn authoritative → revision
 `is_correction = 1`; `live` đến sau bản final không hạ trạng thái.
+
+## API đọc công khai
+
+JSON, không cần token, `no-store` cho dữ liệu kết quả và vé; cũng cần `/` cuối.
+
+| Endpoint | Mô tả |
+|---|---|
+| `GET /api/v1/results/?dai=<slug>&ngay=YYYY-MM-DD&limit=20` | `dai` = slug đài, `ngay` lọc một ngày, `limit` 1..100 (mặc định 20). Không có `dai` thì trả kỳ mới nhất toàn bộ đài; không có `ngay` thì trả các kỳ gần nhất |
+| `GET /api/v1/schedule/` | Lịch quay từng đài kèm `next_draw_at_utc`, `window_start_utc`, `expected_final_at_utc`, `window_end_utc` |
+| `POST /api/v1/ticket-check/` | `{station, date, ticket}` (nhận cả `dai`/`ngay`/`so`); rate limit theo IP; không log số vé; kỳ chưa xác nhận → `result.kind = not-confirmed` |
+
+Mã lỗi: `404` đài không tồn tại · `422` ngày/vé sai định dạng, thiếu đài · `429` dò vé quá nhanh.
 
 Chuẩn bị secret trên Worker (không đặt trong file):
 

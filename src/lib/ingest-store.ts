@@ -27,29 +27,31 @@ interface DrawRow {
   rev: number;
 }
 
-export function jsonResult(body: Record<string, unknown>, status: number): ProcessResult {
-  return { status, body };
-}
-
-async function replayEvent(db: D1Database, idemKey: string, requestHash: string) {
+async function findReplay(
+  db: D1Database,
+  idemKey: string,
+  requestHash: string,
+  drawKeyValue: string,
+): Promise<ProcessResult | null> {
   const existing = await db
     .prepare('SELECT request_hash, result_code FROM ingest_events WHERE idem_key = ?1')
     .bind(idemKey)
     .first<EventRow>();
   if (!existing) return null;
   return existing.request_hash === requestHash
-    ? jsonResult(
-        { ok: true, action: 'duplicate', replayed_status: existing.result_code },
-        200,
-      )
-    : jsonResult(
-        {
+    ? {
+        status: 200,
+        body: { ok: true, action: 'duplicate', replayed_status: existing.result_code, draw_key: drawKeyValue },
+      }
+    : {
+        status: 409,
+        body: {
           ok: false,
           error: 'idempotency_conflict',
           detail: 'Idempotency-Key đã dùng với payload khác.',
+          draw_key: drawKeyValue,
         },
-        409,
-      );
+      };
 }
 
 export async function processObservation(
@@ -59,30 +61,30 @@ export async function processObservation(
   const { observation, idemKey, requestHash } = params;
   const key = drawKey(observation);
 
-  const replay = await replayEvent(db, idemKey, requestHash);
-  if (replay) return { ...replay, body: { ...replay.body, draw_key: key } };
+  const replay = await findReplay(db, idemKey, requestHash, key);
+  if (replay) return replay;
 
   const settings = await db
     .prepare("SELECT value FROM settings WHERE key = 'publish_enabled'")
     .first<{ value: string }>();
   if (settings?.value === '0') {
-    return jsonResult(
-      { ok: false, error: 'publish_disabled', detail: 'Xuất bản đang tắt; ingest bị từ chối.' },
-      423,
-    );
+    return {
+      status: 423,
+      body: { ok: false, error: 'publish_disabled', detail: 'Xuất bản đang tắt; ingest bị từ chối.' },
+    };
   }
 
   const station = await db
     .prepare('SELECT station_code FROM stations WHERE station_code = ?1')
     .bind(observation.station_code)
     .first<{ station_code: string }>();
-  if (!station) return jsonResult({ ok: false, error: 'unknown_station' }, 422);
+  if (!station) return { status: 422, body: { ok: false, error: 'unknown_station' } };
 
   const source = await db
     .prepare('SELECT is_authoritative FROM sources WHERE source_id = ?1')
     .bind(observation.source_id)
     .first<{ is_authoritative: number }>();
-  if (!source) return jsonResult({ ok: false, error: 'unknown_source' }, 422);
+  if (!source) return { status: 422, body: { ok: false, error: 'unknown_source' } };
 
   const current = await db
     .prepare('SELECT status, confirmed_revision_id, rev FROM draws WHERE draw_key = ?1')
@@ -105,7 +107,6 @@ export async function processObservation(
       ? { status: current.status, confirmed_revision_id: current.confirmed_revision_id, rev: current.rev }
       : null,
     revisions: revisions.results ?? [],
-    publishEnabled: true,
   });
 
   const now = new Date().toISOString();
@@ -211,33 +212,33 @@ export async function processObservation(
     const message = error instanceof Error ? error.message : String(error);
     if (/UNIQUE|constraint/i.test(message)) {
       // Trùng Idempotency-Key → trả lại kết quả cũ.
-      const again = await replayEvent(db, idemKey, requestHash);
-      if (again) return { ...again, body: { ...again.body, draw_key: key } };
+      const replay = await findReplay(db, idemKey, requestHash, key);
+      if (replay) return replay;
       // Không có event của mình ⇒ lỗi đến từ guard `rev`; batch đã rollback sạch nên gửi lại
       // với CÙNG Idempotency-Key là an toàn.
-      return jsonResult(
-        {
+      return {
+        status: 409,
+        body: {
           ok: false,
           error: 'concurrent_write',
           detail: 'Kỳ vừa bị request khác thay đổi; chưa ghi gì, gửi lại với cùng Idempotency-Key.',
           draw_key: key,
         },
-        409,
-      );
+      };
     }
     throw error;
   }
 
   resetDataCache();
 
-  return jsonResult(
-    {
+  return {
+    status: decision.httpStatus,
+    body: {
       ok: true,
       action: decision.action,
       draw_key: key,
       status: decision.status ?? current?.status ?? 'scheduled',
       reason: decision.reason,
     },
-    decision.httpStatus,
-  );
+  };
 }

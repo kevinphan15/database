@@ -12,15 +12,12 @@ export type AuthResult =
   | { ok: false; status: 401 | 403; error: string };
 
 export function parseBearer(header: string | null): string | null {
-  if (!header) return null;
-  const match = /^Bearer\s+(.+)$/i.exec(header.trim());
-  const token = match?.[1]?.trim();
-  return token ? token : null;
+  const match = /^Bearer\s+(.+)$/i.exec(header?.trim() ?? '');
+  return match?.[1]?.trim() || null;
 }
 
 async function digest(value: string): Promise<Uint8Array> {
-  const bytes = new TextEncoder().encode(value);
-  const hash = await crypto.subtle.digest('SHA-256', bytes);
+  const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
   return new Uint8Array(hash);
 }
 
@@ -40,25 +37,25 @@ export interface AuthOptions {
 }
 
 export async function authorize(request: Request, options: AuthOptions): Promise<AuthResult> {
+  const { ingestToken, operatorToken, require } = options;
+
+  // Chưa cấu hình token nào: API nội bộ đóng hẳn, không mở cho request ẩn danh.
+  if (!ingestToken && !operatorToken) {
+    return { ok: false, status: 403, error: 'internal_api_disabled' };
+  }
+
   const token = parseBearer(request.headers.get('authorization'));
   if (!token) return { ok: false, status: 401, error: 'missing_bearer_token' };
-
-  const { ingestToken, operatorToken } = options;
-
-  if (ingestToken && (await timingSafeEqual(token, ingestToken))) {
-    return options.require === 'operator'
-      ? { ok: false, status: 403, error: 'operator_token_required' }
-      : { ok: true, role: 'ingest' };
-  }
 
   if (operatorToken && (await timingSafeEqual(token, operatorToken))) {
     return { ok: true, role: 'operator' };
   }
 
-  // Không cấu hình token nào: từ chối hẳn, không mở API.
-  if (!ingestToken && !operatorToken) {
-    return { ok: false, status: 403, error: 'internal_api_disabled' };
+  if (!ingestToken || !(await timingSafeEqual(token, ingestToken))) {
+    return { ok: false, status: 401, error: 'invalid_token' };
   }
 
-  return { ok: false, status: 401, error: 'invalid_token' };
+  return require === 'operator'
+    ? { ok: false, status: 403, error: 'operator_token_required' }
+    : { ok: true, role: 'ingest' };
 }

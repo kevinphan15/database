@@ -41,6 +41,32 @@ function isRealDate(value: string): boolean {
   );
 }
 
+function optionalIso(value: unknown, field: string, errors: string[]): string | null {
+  if (value === undefined || value === null) return null;
+  if (typeof value === 'string' && ISO_UTC_RE.test(value)) return value;
+  errors.push(`${field} phải là ISO-8601 UTC (…Z)`);
+  return null;
+}
+
+function optionalText(
+  value: unknown,
+  field: string,
+  errors: string[],
+  maxLength: number,
+): string | null {
+  if (value === undefined || value === null) return null;
+  if (typeof value === 'string' && value.length <= maxLength) return value;
+  errors.push(`${field} không hợp lệ`);
+  return null;
+}
+
+function optionalRuleVersion(value: unknown, errors: string[]): number {
+  if (value === undefined || value === null) return 1;
+  if (Number.isInteger(value) && (value as number) >= 1) return value as number;
+  errors.push('prize_rule_version phải là số nguyên ≥ 1');
+  return 1;
+}
+
 export type ParsedObservation =
   | { ok: true; value: Observation }
   | { ok: false; errors: string[] };
@@ -75,26 +101,9 @@ export function parseObservation(input: unknown): ParsedObservation {
   const observed_at = typeof raw.observed_at === 'string' ? raw.observed_at : '';
   if (!ISO_UTC_RE.test(observed_at)) errors.push('observed_at phải là ISO-8601 UTC (…Z)');
 
-  const source_updated_at =
-    raw.source_updated_at === undefined || raw.source_updated_at === null
-      ? null
-      : typeof raw.source_updated_at === 'string' && ISO_UTC_RE.test(raw.source_updated_at)
-        ? raw.source_updated_at
-        : (errors.push('source_updated_at phải là ISO-8601 UTC (…Z)'), null);
-
-  const period_code =
-    raw.period_code === undefined || raw.period_code === null
-      ? null
-      : typeof raw.period_code === 'string' && raw.period_code.length <= 20
-        ? raw.period_code
-        : (errors.push('period_code không hợp lệ'), null);
-
-  const prize_rule_version =
-    raw.prize_rule_version === undefined || raw.prize_rule_version === null
-      ? 1
-      : Number.isInteger(raw.prize_rule_version) && (raw.prize_rule_version as number) >= 1
-        ? (raw.prize_rule_version as number)
-        : (errors.push('prize_rule_version phải là số nguyên ≥ 1'), 1);
+  const source_updated_at = optionalIso(raw.source_updated_at, 'source_updated_at', errors);
+  const period_code = optionalText(raw.period_code, 'period_code', errors, 20);
+  const prize_rule_version = optionalRuleVersion(raw.prize_rule_version, errors);
 
   const prizes: Record<string, string[]> = {};
   const rawPrizes = raw.prizes;
@@ -209,12 +218,11 @@ export type IngestAction =
   | 'confirm_dual_source'
   | 'correction'
   | 'dispute'
-  | 'ignore_downgrade'
-  | 'reject_publish_disabled';
+  | 'ignore_downgrade';
 
 export interface IngestDecision {
   action: IngestAction;
-  httpStatus: 200 | 201 | 423;
+  httpStatus: 200 | 201;
   /** Trạng thái mới của kỳ; null = giữ nguyên. */
   status: DrawStatus | null;
   /** Hash của bản được xác nhận (null = không đổi bản đã xác nhận). */
@@ -230,7 +238,6 @@ export interface DecisionInput {
   sourceAuthoritative: boolean;
   current: DrawState | null;
   revisions: RevisionRef[];
-  publishEnabled: boolean;
 }
 
 function confirmedRevisionHash(current: DrawState | null, revisions: RevisionRef[]): string | null {
@@ -240,19 +247,7 @@ function confirmedRevisionHash(current: DrawState | null, revisions: RevisionRef
 
 /** Luật A: quyết định công bố cho một observation. */
 export function decideIngest(input: DecisionInput): IngestDecision {
-  const { observation, contentHash, sourceAuthoritative, current, revisions, publishEnabled } = input;
-
-  if (!publishEnabled) {
-    return {
-      action: 'reject_publish_disabled',
-      httpStatus: 423,
-      status: null,
-      confirmedHash: null,
-      confirmedBy: null,
-      isCorrection: false,
-      reason: 'publish_enabled = 0',
-    };
-  }
+  const { observation, contentHash, sourceAuthoritative, current, revisions } = input;
 
   const confirmedHash = confirmedRevisionHash(current, revisions);
   const hasConfirmed = Boolean(confirmedHash);

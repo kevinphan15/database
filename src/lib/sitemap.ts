@@ -111,8 +111,9 @@ Disallow: /*?page=
 Disallow: /*?dai=
 Disallow: /*?station=
 Disallow: /*?so=
-# API nội bộ cho n8n: không cho crawl.
+# API nội bộ cho n8n và API JSON công khai: không cho crawl.
 Disallow: /internal/
+Disallow: /api/
 
 Sitemap: ${baseUrl}/sitemap.xml
 `;

@@ -46,7 +46,6 @@ function decide(over: Partial<DecisionInput> = {}) {
     sourceAuthoritative: false,
     current: null,
     revisions: [],
-    publishEnabled: true,
     ...over,
   });
 }
@@ -135,12 +134,6 @@ describe('hash', () => {
 });
 
 describe('luật A — decideIngest', () => {
-  it('từ chối khi xuất bản đang tắt', () => {
-    const decision = decide({ publishEnabled: false });
-    expect(decision.action).toBe('reject_publish_disabled');
-    expect(decision.httpStatus).toBe(423);
-  });
-
   it('live đầu tiên đưa kỳ sang live', () => {
     const decision = decide({ observation: obs({ kind: 'live' }) });
     expect(decision.action).toBe('live');
