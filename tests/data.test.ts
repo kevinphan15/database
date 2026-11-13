@@ -71,4 +71,11 @@ describe('loadDataset', () => {
     // Có thông báo cho người đọc thay vì trang trống không giải thích.
     expect(dataset.notice).toContain('chưa tải được dữ liệu');
   });
+
+  it('D1 lỗi khi đọc settings → index tắt (fail-closed), deploy tối không tự mở index', async () => {
+    state.db = makeD1({ failOn: 'FROM' });
+    const { dataset, degraded } = await loadDataset();
+    expect(degraded).toBe(true);
+    expect(dataset.index_enabled).toBe(false);
+  });
 });

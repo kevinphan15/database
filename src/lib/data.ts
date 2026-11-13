@@ -47,8 +47,10 @@ async function readIndexEnabled(db: D1Database | null): Promise<boolean> {
   try {
     return (await readFlags(db)).index_enabled;
   } catch (error) {
-    console.error('[data] không đọc được công tắc index, coi như đang bật:', error);
-    return true;
+    // Không đọc được công tắc thì phải coi như ĐANG TẮT: deploy tối không được tự mở index
+    // chỉ vì D1 lỗi. (Thiếu hàng trong settings vẫn là bật — xem readFlags.)
+    console.error('[data] không đọc được công tắc index, coi như đang tắt:', error);
+    return false;
   }
 }
 

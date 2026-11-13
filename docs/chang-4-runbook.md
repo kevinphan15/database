@@ -243,7 +243,8 @@ gói Free), 20 (n8n chạy kỳ thật), 22–23 (`deployments`/rollback) — ph
 ### 7.0 Công tắc index — ✅ đã đấu xong
 
 - `settings.index_enabled`: `loadDataset()` đọc **lại mỗi request** thành `Dataset.index_enabled`
-  (**thiếu hàng = bật**, `'0'` = tắt); fixture mặc định bật.
+  (**thiếu hàng = bật**, `'0'` = tắt; **không đọc được settings/D1 lỗi = tắt** — fail-closed, để
+deploy tối không tự mở index vì sự cố D1); fixture mặc định bật.
 - `decideIndex({ …, indexEnabled: dataset.index_enabled })` ở **mọi** trang (home, miền, đài, ngày,
   sổ kết quả, dò vé, hướng dẫn, thống kê). Trang 404 vốn đã `noindex` cố định.
 - `robots.txt`: tắt → `Disallow: /`, không khai sitemap; bật → luật cũ + `Sitemap:`.
